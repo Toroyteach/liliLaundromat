@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Dashboard;
 use App\Http\Controllers\Controller;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(): Response
     {
         $today = Carbon::today();
 
@@ -75,7 +77,7 @@ class DashboardController extends Controller
             ->limit(10)
             ->get();
 
-        return response()->json([
+        return Inertia::render('dashboard/index', [
             'total_revenue_today'   => $totalRevenueToday,
             'total_orders_today'    => $totalOrdersToday,
             'completed_orders'      => $completedOrders,

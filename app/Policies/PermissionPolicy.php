@@ -4,63 +4,52 @@ namespace App\Policies;
 
 use App\Models\Permission;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 
 class PermissionPolicy
 {
-    /**
-     * Determine whether the user can view any models.
-     */
-    public function viewAny(User $user): bool
-    {
-        return true;
-    }
-
-    /**
-     * Determine whether the user can view the model.
-     */
-    public function view(User $user, Permission $permission): bool
-    {
-        return true;
-    }
-
     /**
      * Determine whether the user can create models.
      */
     public function create(User $user): bool
     {
-        return true;
-    }
-
-    /**
-     * Determine whether the user can update the model.
-     */
-    public function update(User $user, Permission $permission): bool
-    {
-        return true;
+        return $user->hasPermission('permissions.create');
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user, Permission $permission): bool
+    public function update(User $user): bool
     {
-        return true;
+        return $user->hasPermission('permissions.update');
     }
 
     /**
-     * Determine whether the user can restore the model.
+     * Determine whether the user can delete the model.
      */
-    public function restore(User $user, Permission $permission): bool
+    public function delete(User $user): bool
     {
-        return true;
+        return $user->hasPermission('permissions.delete');
     }
 
     /**
-     * Determine whether the user can permanently delete the model.
+     * Determine if the user can assign roles to a user.
+     *
+     * @param  \App\Models\Permission $permission
+     * @return bool
      */
-    public function forceDelete(User $user, Permission $permission): bool
+    public function assignPermission(User $user): bool
     {
-        return true;
+        return $user->hasPermission('permissions.attach_permission');
+    }
+
+    /**
+     * Determine if the user can remove roles from a user.
+     *
+     * @param  \App\Models\User  $user
+     * @return bool
+     */
+    public function removePermission(User $user): bool
+    {
+        return $user->hasPermission('permissions.detach_permission');
     }
 }

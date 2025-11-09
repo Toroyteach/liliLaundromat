@@ -8,26 +8,28 @@ use App\Http\Requests\UpdateBranchRequest;
 use App\Models\Branch;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
+use Inertia\Inertia;
+use Inertia\Response;
 
-class BranchConroller extends Controller
+class BranchController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(): Response|RedirectResponse
     {
         try {
             if (!Gate::allows('viewAny', Branch::class)) {
                 abort(403, __('Unauthorized Action'));
             }
-
-            return response()->json([
-                'data' => Branch::all()
+            return Inertia::render('branch/index', [
+                'branches' => Branch::all()
             ]);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return back()->with(['error' => $e->getMessage()], 500);
         }
     }
 
-    public function store(StoreBranchRequest $request): JsonResponse
+    public function store(StoreBranchRequest $request): Response|RedirectResponse
     {
         try {
             if (!Gate::allows('create', Branch::class)) {
@@ -36,22 +38,22 @@ class BranchConroller extends Controller
 
             $branch = Branch::create($request->validated());
 
-            return response()->json(['data' => $branch], 201);
+            return back()->with(['data' => $branch], 201);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return back()->with(['error' => $e->getMessage()], 500);
         }
     }
 
-    public function show(Branch $branch): JsonResponse
+    public function show(Branch $branch): Response|RedirectResponse
     {
         if (!Gate::allows('view', $branch)) {
             abort(403, __('Unauthorized Action'));
         }
 
-        return response()->json(['data' => $branch]);
+        return back()->with(['data' => $branch]);
     }
 
-    public function update(UpdateBranchRequest $request, Branch $branch): JsonResponse
+    public function update(UpdateBranchRequest $request, Branch $branch): Response|RedirectResponse
     {
         try {
 
@@ -61,13 +63,15 @@ class BranchConroller extends Controller
 
             $branch->update($request->validated());
 
-            return response()->json(['data' => $branch]);
+            return Inertia::render('branch/show', [
+                'branch' => $branch
+            ]);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return back()->with(['error' => $e->getMessage()], 500);
         }
     }
 
-    public function destroy(Branch $branch): JsonResponse
+    public function destroy(Branch $branch): Response|RedirectResponse
     {
         try {
 
@@ -77,9 +81,9 @@ class BranchConroller extends Controller
 
             $branch->delete();
 
-            return response()->json(['message' => 'Branch deleted successfully']);
+            return back()->with(['message' => 'Branch deleted successfully']);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return back()->with(['error' => $e->getMessage()], 500);
         }
     }
 }

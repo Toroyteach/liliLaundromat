@@ -17,7 +17,7 @@ return new class extends Migration
 
             $table->string('garment_type'); // shirt / curtains / duvet etc
 
-            $table->enum('pricing_mode', ['per_piece', 'per_kg'])->default('per_piece');
+            $table->string('pricing_mode')->default('per_piece'); // 'per_piece', 'per_kg'
 
             $table->integer('quantity')->default(1); // pieces count
             $table->decimal('weight_kg', 8, 2)->nullable(); // only used when per_kg
@@ -27,7 +27,9 @@ return new class extends Migration
 
             $table->string('color')->nullable();
             $table->string('material')->nullable();
-            $table->string('barcode_number')->unique();
+            $table->string('barcode_number')->nullable(); // keep existing field if present
+            $table->string('barcode_type')->nullable(); // 'qr' or 'code128'
+            $table->string('barcode_image')->nullable(); // storage path to png
             $table->string('status')->index();
             $table->text('notes')->nullable();
             $table->timestamps();

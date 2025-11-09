@@ -7,10 +7,12 @@ use App\Http\Requests\StoreCustomerRequest;
 use App\Http\Requests\UpdateCustomerRequest;
 use App\Models\Customer;
 use Illuminate\Support\Facades\Gate;
-
+use Illuminate\Http\RedirectResponse;
+use Inertia\Inertia;
+use Inertia\Response;
 class CustomerConroller extends Controller
 {
-    public function index()
+    public function index(): Response|RedirectResponse
     {
         try {
 
@@ -19,13 +21,13 @@ class CustomerConroller extends Controller
             }
 
             $customers = Customer::orderBy('created_at', 'desc')->paginate(20);
-            return response()->json($customers);
+            return Inertia::render('/index', [ '' => $customers]);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return back()->with(['error' => $e->getMessage()], 500);
         }
     }
 
-    public function store(StoreCustomerRequest $request)
+    public function store(StoreCustomerRequest $request): Response|RedirectResponse
     {
         try {
             if (!Gate::allows('update', Customer::class)) {
@@ -33,13 +35,13 @@ class CustomerConroller extends Controller
             }
 
             $customer = Customer::create($request->validated());
-            return response()->json(['message' => 'Customer created successfully', 'data' => $customer], 201);
+            return back()->with(['message' => 'Customer created successfully', 'data' => $customer], 201);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return back()->with(['error' => $e->getMessage()], 500);
         }
     }
 
-    public function show(Customer $customer)
+    public function show(Customer $customer): Response|RedirectResponse
     {
         try {
 
@@ -47,13 +49,13 @@ class CustomerConroller extends Controller
                 abort(403, __('Unauthorized Action'));
             }
 
-            return response()->json($customer);
+            return back()->with($customer);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return back()->with(['error' => $e->getMessage()], 500);
         }
     }
 
-    public function update(UpdateCustomerRequest $request, Customer $customer)
+    public function update(UpdateCustomerRequest $request, Customer $customer): Response|RedirectResponse
     {
         try {
 
@@ -62,13 +64,13 @@ class CustomerConroller extends Controller
             }
 
             $customer->update($request->validated());
-            return response()->json(['message' => 'Customer updated successfully', 'data' => $customer]);
+            return back()->with(['message' => 'Customer updated successfully', 'data' => $customer]);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return back()->with(['error' => $e->getMessage()], 500);
         }
     }
 
-    public function destroy(Customer $customer)
+    public function destroy(Customer $customer): Response|RedirectResponse
     {
         try {
             if (!Gate::allows('delete', $customer)) {
@@ -77,9 +79,9 @@ class CustomerConroller extends Controller
 
 
             $customer->delete();
-            return response()->json(['message' => 'Customer deleted successfully']);
+            return back()->with(['message' => 'Customer deleted successfully']);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return back()->with(['error' => $e->getMessage()], 500);
         }
     }
 }

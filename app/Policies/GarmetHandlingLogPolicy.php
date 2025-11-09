@@ -13,7 +13,7 @@ class GarmetHandlingLogPolicy
      */
     public function viewAny(User $user): bool
     {
-        return true;
+        return $user->isAdmin() || $user->hasPermission('garmet_handling_logs.read');
     }
 
     /**
@@ -21,7 +21,7 @@ class GarmetHandlingLogPolicy
      */
     public function view(User $user, GarmetHandlingLog $garmetHandlingLog): bool
     {
-        return true;
+        return $user->isAdmin() || $user->hasPermission('garmet_handling_logs.read');
     }
 
     /**
@@ -29,7 +29,7 @@ class GarmetHandlingLogPolicy
      */
     public function create(User $user): bool
     {
-        return true;
+        return $user->isAdmin() || $user->hasPermission('garmet_handling_logs.create');
     }
 
     /**
@@ -37,7 +37,7 @@ class GarmetHandlingLogPolicy
      */
     public function update(User $user, GarmetHandlingLog $garmetHandlingLog): bool
     {
-        return true;
+        return $user->isAdmin() || $user->hasPermission('garmet_handling_logs.update');
     }
 
     /**
@@ -45,7 +45,7 @@ class GarmetHandlingLogPolicy
      */
     public function delete(User $user, GarmetHandlingLog $garmetHandlingLog): bool
     {
-        return true;
+        return $user->isAdmin() || $user->hasPermission('garmet_handling_logs.delete');
     }
 
     /**
@@ -53,7 +53,7 @@ class GarmetHandlingLogPolicy
      */
     public function restore(User $user, GarmetHandlingLog $garmetHandlingLog): bool
     {
-        return true;
+        return $user->isAdmin() || $user->hasPermission('garmet_handling_logs.update');
     }
 
     /**
@@ -61,6 +61,6 @@ class GarmetHandlingLogPolicy
      */
     public function forceDelete(User $user, GarmetHandlingLog $garmetHandlingLog): bool
     {
-        return true;
+        return $user->isAdmin() || $user->hasPermission('garmet_handling_logs.delete');
     }
 }

@@ -7,25 +7,30 @@ use App\Http\Controllers\Controller;
 use App\Models\OrderItem;
 use App\Http\Requests\StoreOrderItemRequest;
 use App\Http\Requests\UpdateOrderItemRequest;
-use Illuminate\Http\JsonResponse;
+use App\Services\BarcodeService;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Http\RedirectResponse;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class OrderItemConroller extends Controller
 {
-    public function index(): JsonResponse
+    public function index(): Response|RedirectResponse
     {
         try {
             if (!Gate::allows('viewAny', OrderItem::class)) {
                 abort(403, __('Unauthorized Action'));
             }
 
-            return response()->json(['data' => OrderItem::all()]);
+            return Inertia::render('orderItem/index', [
+                'data' => OrderItem::all()
+            ]);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return back()->with(['error' => $e->getMessage()], 500);
         }
     }
 
-    public function store(StoreOrderItemRequest $request): JsonResponse
+    public function store(StoreOrderItemRequest $request): Response|RedirectResponse
     {
         try {
             if (!Gate::allows('create', OrderItem::class)) {
@@ -34,22 +39,22 @@ class OrderItemConroller extends Controller
 
             $item = OrderItem::create($request->validated());
 
-            return response()->json(['data' => $item], 201);
+            return back()->with(['data' => $item], 201);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return back()->with(['error' => $e->getMessage()], 500);
         }
     }
 
-    public function show(OrderItem $order_item): JsonResponse
+    public function show(OrderItem $order_item): Response|RedirectResponse
     {
         if (!Gate::allows('view', $order_item)) {
             abort(403, __('Unauthorized Action'));
         }
 
-        return response()->json(['data' => $order_item]);
+        return back()->with(['data' => $order_item]);
     }
 
-    public function update(UpdateOrderItemRequest $request, OrderItem $order_item): JsonResponse
+    public function update(UpdateOrderItemRequest $request, OrderItem $order_item): Response|RedirectResponse
     {
         try {
             if (!Gate::allows('update', $order_item)) {
@@ -58,13 +63,13 @@ class OrderItemConroller extends Controller
 
             $order_item->update($request->validated());
 
-            return response()->json(['data' => $order_item]);
+            return back()->with(['data' => $order_item]);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return back()->with(['error' => $e->getMessage()], 500);
         }
     }
 
-    public function destroy(OrderItem $order_item): JsonResponse
+    public function destroy(OrderItem $order_item): Response|RedirectResponse
     {
         try {
             if (!Gate::allows('delete', $order_item)) {
@@ -73,9 +78,18 @@ class OrderItemConroller extends Controller
 
             $order_item->delete();
 
-            return response()->json(['message' => 'Order item deleted successfully']);
+            return back()->with(['message' => 'Order item deleted successfully']);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return back()->with(['error' => $e->getMessage()], 500);
         }
+    }
+
+    public function generateBarcodeForItem($id, BarcodeService $barcode)
+    {
+        $item = OrderItem::findOrFail($id);
+
+        $result = $barcode->generateForOrderItem($item, request('type', 'qr'));
+
+        return back()->with($result);
     }
 }

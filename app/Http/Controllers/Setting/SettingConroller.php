@@ -22,8 +22,8 @@ class SettingConroller extends Controller
 
             $settings = Setting::all()->pluck('value', 'key');
 
-            return Inertia::render('admin/settings/index', [
-                'settings' => $settings,
+            return Inertia::render('settings/index', [
+                'data' => $settings
             ]);
         } catch (\Throwable $e) {
             return back()->withErrors([

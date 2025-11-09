@@ -8,44 +8,29 @@ use Illuminate\Auth\Access\Response;
 
 class OrderItemPolicy
 {
-    /**
-     * Determine whether the user can view any models.
-     */
     public function viewAny(User $user): bool
     {
-        return true;
+        return $user->isAdmin() || $user->hasPermission('order_items.read');
     }
 
-    /**
-     * Determine whether the user can view the model.
-     */
     public function view(User $user, OrderItem $orderItem): bool
     {
-        return true;
+        return $user->isAdmin() || $user->hasPermission('order_items.read');
     }
 
-    /**
-     * Determine whether the user can create models.
-     */
     public function create(User $user): bool
     {
-        return true;
+        return $user->isAdmin() || $user->hasPermission('order_items.create');
     }
 
-    /**
-     * Determine whether the user can update the model.
-     */
     public function update(User $user, OrderItem $orderItem): bool
     {
-        return true;
+        return $user->isAdmin() || $user->hasPermission('order_items.update');
     }
 
-    /**
-     * Determine whether the user can delete the model.
-     */
     public function delete(User $user, OrderItem $orderItem): bool
     {
-        return true;
+        return $user->isAdmin() || $user->hasPermission('order_items.delete');
     }
 
     /**

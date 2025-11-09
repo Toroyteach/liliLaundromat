@@ -7,25 +7,29 @@ use App\Http\Controllers\Controller;
 use App\Models\Payment;
 use App\Http\Requests\StorePaymentRequest;
 use App\Http\Requests\UpdatePaymentRequest;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Http\RedirectResponse;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class PaymentConroller extends Controller
 {
-    public function index(): JsonResponse
+    public function index(): Response|RedirectResponse
     {
         try {
             if (!Gate::allows('viewAny', Payment::class)) {
                 abort(403, __('Unauthorized Action'));
             }
 
-            return response()->json(['data' => Payment::all()]);
+            return Inertia::render('payment/index', [
+                'data' => Payment::all()
+            ]);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return back()->with(['error' => $e->getMessage()], 500);
         }
     }
 
-    public function store(StorePaymentRequest $request): JsonResponse
+    public function store(StorePaymentRequest $request): Response|RedirectResponse
     {
         try {
 
@@ -36,13 +40,13 @@ class PaymentConroller extends Controller
 
             $payment = Payment::create($request->validated());
 
-            return response()->json(['data' => $payment], 201);
+            return back()->with(['data' => $payment], 201);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return back()->with(['error' => $e->getMessage()], 500);
         }
     }
 
-    public function show(Payment $payment): JsonResponse
+    public function show(Payment $payment): Response|RedirectResponse
     {
 
         if (!Gate::allows('view', Payment::class)) {
@@ -50,10 +54,10 @@ class PaymentConroller extends Controller
         }
 
 
-        return response()->json(['data' => $payment]);
+        return back()->with(['data' => $payment]);
     }
 
-    public function update(UpdatePaymentRequest $request, Payment $payment): JsonResponse
+    public function update(UpdatePaymentRequest $request, Payment $payment): Response|RedirectResponse
     {
         try {
 
@@ -63,13 +67,13 @@ class PaymentConroller extends Controller
 
             $payment->update($request->validated());
 
-            return response()->json(['data' => $payment]);
+            return back()->with(['data' => $payment]);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return back()->with(['error' => $e->getMessage()], 500);
         }
     }
 
-    public function destroy(Payment $payment): JsonResponse
+    public function destroy(Payment $payment): Response|RedirectResponse
     {
         try {
 
@@ -79,9 +83,9 @@ class PaymentConroller extends Controller
 
             $payment->delete();
 
-            return response()->json(['message' => 'Payment deleted successfully']);
+            return back()->with(['message' => 'Payment deleted successfully']);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return back()->with(['error' => $e->getMessage()], 500);
         }
     }
 }

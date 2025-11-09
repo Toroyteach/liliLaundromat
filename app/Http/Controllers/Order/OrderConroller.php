@@ -6,27 +6,39 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Http\Requests\StoreOrderRequest;
 use App\Http\Requests\UpdateOrderRequest;
+use App\Services\BarcodeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class OrderConroller extends Controller
 {
-    public function index(): JsonResponse
+    protected $barcodeService;
+
+    public function __construct(BarcodeService $barcodeService)
+    {
+        $this->barcodeService = $barcodeService;
+    }
+
+    public function index(): Response|RedirectResponse
     {
         try {
             if (!Gate::allows('viewAny', Order::class)) {
                 abort(403, __('Unauthorized Action'));
             }
 
-            return response()->json([
+            return Inertia::render('order/index', [
                 'data' => Order::all()
             ]);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return back()->with(['error' => $e->getMessage()], 500);
         }
     }
 
-    public function store(StoreOrderRequest $request): JsonResponse
+    public function store(StoreOrderRequest $request): Response|RedirectResponse
     {
         try {
             if (!Gate::allows('create', Order::class)) {
@@ -35,22 +47,24 @@ class OrderConroller extends Controller
 
             $order = Order::create($request->validated());
 
-            return response()->json(['data' => $order], 201);
+            return back()->with(['data' => $order], 201);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return back()->with(['error' => $e->getMessage()], 500);
         }
     }
 
-    public function show(Order $order): JsonResponse
+    public function show(Order $order): Response|RedirectResponse
     {
         if (!Gate::allows('view', $order)) {
             abort(403, __('Unauthorized Action'));
         }
 
-        return response()->json(['data' => $order]);
+        return Inertia::render('order/edit', [
+            'data' => $order
+        ]);
     }
 
-    public function update(UpdateOrderRequest $request, Order $order): JsonResponse
+    public function update(UpdateOrderRequest $request, Order $order): Response|RedirectResponse
     {
         try {
 
@@ -60,13 +74,13 @@ class OrderConroller extends Controller
 
             $order->update($request->validated());
 
-            return response()->json(['data' => $order]);
+            return back()->with(['data' => $order]);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return back()->with(['error' => $e->getMessage()], 500);
         }
     }
 
-    public function destroy(Order $order): JsonResponse
+    public function destroy(Order $order): Response|RedirectResponse
     {
         try {
 
@@ -75,9 +89,35 @@ class OrderConroller extends Controller
             }
             $order->delete();
 
-            return response()->json(['message' => 'Order deleted successfully']);
+            return back()->with(['message' => 'Order deleted successfully']);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return back()->with(['error' => $e->getMessage()], 500);
         }
+    }
+
+    // Example: generate labels for all items in an order (POST /orders/{order}/generate-labels)
+    public function generateLabels(Request $request, Order $order)
+    {
+        // Type comes from request: 'qr' or 'barcode'
+        $type = $request->input('type', 'qr');
+        $force = (bool) $request->input('force', false);
+
+        $results = [];
+        foreach ($order->items as $item) {
+            $res = $this->barcodeService->generateForOrderItem($item, $type, ['force' => $force]);
+            $results[] = [
+                'item_id' => $item->id,
+                'success' => $res['success'],
+                'path' => $res['path'],
+                'barcode_number' => $res['barcode_number'],
+                'error' => $res['error']
+            ];
+        }
+
+        return back()->with([
+            'order_id' => $order->id,
+            'type' => $type,
+            'results' => $results
+        ]);
     }
 }

@@ -7,24 +7,29 @@ use App\Models\Invoice;
 use App\Http\Requests\StoreInvoiceRequest;
 use App\Http\Requests\UpdateInvoiceRequest;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class InvoiceConroller extends Controller
 {
-    public function index(): JsonResponse
+    public function index(): Response|RedirectResponse
     {
         try {
             if (!Gate::allows('viewAny', Invoice::class)) {
                 abort(403, __('Unauthorized Action'));
             }
 
-            return response()->json(['data' => Invoice::all()]);
+            return Inertia::render('invoice/index', [
+                'data' => Invoice::all()
+            ]);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return back()->with(['error' => $e->getMessage()], 500);
         }
     }
 
-    public function store(StoreInvoiceRequest $request): JsonResponse
+    public function store(StoreInvoiceRequest $request): Response|RedirectResponse
     {
         try {
             if (!Gate::allows('create', Invoice::class)) {
@@ -33,22 +38,24 @@ class InvoiceConroller extends Controller
 
             $invoice = Invoice::create($request->validated());
 
-            return response()->json(['data' => $invoice], 201);
+            return back()->with(['data' => $invoice], 201);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return back()->with(['error' => $e->getMessage()], 500);
         }
     }
 
-    public function show(Invoice $invoice): JsonResponse
+    public function show(Invoice $invoice): Response|RedirectResponse
     {
         if (!Gate::allows('view', $invoice)) {
             abort(403, __('Unauthorized Action'));
         }
 
-        return response()->json(['data' => $invoice]);
+        return Inertia::render('invoice/edit', [
+            'data' => $invoice
+        ]);
     }
 
-    public function update(UpdateInvoiceRequest $request, Invoice $invoice): JsonResponse
+    public function update(UpdateInvoiceRequest $request, Invoice $invoice): Response|RedirectResponse
     {
         try {
             if (!Gate::allows('update', $invoice)) {
@@ -57,13 +64,13 @@ class InvoiceConroller extends Controller
 
             $invoice->update($request->validated());
 
-            return response()->json(['data' => $invoice]);
+            return back()->with(['data' => $invoice]);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return back()->with(['error' => $e->getMessage()], 500);
         }
     }
 
-    public function destroy(Invoice $invoice): JsonResponse
+    public function destroy(Invoice $invoice): Response|RedirectResponse
     {
         try {
             if (!Gate::allows('delete', $invoice)) {
@@ -72,9 +79,9 @@ class InvoiceConroller extends Controller
 
             $invoice->delete();
 
-            return response()->json(['message' => 'Invoice deleted successfully']);
+            return back()->with(['message' => 'Invoice deleted successfully']);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return back()->with(['error' => $e->getMessage()], 500);
         }
     }
 }

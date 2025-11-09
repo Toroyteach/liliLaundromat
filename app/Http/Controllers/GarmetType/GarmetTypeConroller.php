@@ -7,7 +7,10 @@ use App\Models\GarmetType;
 use Illuminate\Http\Request;
 use App\Http\Requests\StoreGarmetTypeRequest;
 use App\Http\Requests\UpdateGarmetTypeRequest;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class GarmetTypeConroller extends Controller
 {
@@ -17,9 +20,8 @@ class GarmetTypeConroller extends Controller
             abort(403, __('Unauthorized Action'));
         }
 
-        return response()->json([
-            'success' => true,
-            'data' => GarmetType::all()
+        return Inertia::render('garmettype/index', [
+            'garmetTypes' => GarmetType::all()
         ]);
     }
 
@@ -32,14 +34,15 @@ class GarmetTypeConroller extends Controller
 
             $garmetType = GarmetType::create($request->validated());
 
-            return response()->json([
+
+            return back()->with([
                 'success' => true,
                 'message' => 'Garment type created successfully',
                 'data' => $garmetType
             ], 201);
         } catch (\Exception $e) {
 
-            return response()->json([
+            return back()->with([
                 'success' => false,
                 'message' => 'Error creating garment type',
                 'error' => $e->getMessage()
@@ -57,14 +60,14 @@ class GarmetTypeConroller extends Controller
             $garmetType = GarmetType::findOrFail($id);
             $garmetType->update($request->validated());
 
-            return response()->json([
+            return back()->with([
                 'success' => true,
                 'message' => 'Garment type updated successfully',
                 'data' => $garmetType
             ], 200);
         } catch (\Exception $e) {
 
-            return response()->json([
+            return back()->with([
                 'success' => false,
                 'message' => 'Error updating garment type',
                 'error' => $e->getMessage()
@@ -82,12 +85,12 @@ class GarmetTypeConroller extends Controller
             $garmetType = GarmetType::findOrFail($id);
             $garmetType->delete();
 
-            return response()->json([
+            return back()->with([
                 'success' => true,
                 'message' => 'Garment type deleted successfully'
             ]);
         } catch (\Exception $e) {
-            return response()->json([
+            return back()->with([
                 'success' => false,
                 'message' => 'Error deleting garment type',
                 'error' => $e->getMessage()

@@ -2,65 +2,55 @@
 
 namespace App\Policies;
 
-use App\Models\Setting;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
+use Illuminate\Auth\Access\HandlesAuthorization;
 
 class SettingPolicy
 {
+    use HandlesAuthorization;
     /**
-     * Determine whether the user can view any models.
+     * Determine if the user can view any settings.
+     *
+     * @param  \App\Models\User  $user
+     * @return bool
      */
     public function viewAny(User $user): bool
     {
-        return true;
+        return $user->hasPermission('settings.read');
     }
 
     /**
-     * Determine whether the user can view the model.
-     */
-    public function view(User $user, Setting $setting): bool
-    {
-        return true;
-    }
-
-    /**
-     * Determine whether the user can create models.
+     * Determine if the user can create settings.
+     *
+     * @param  \App\Models\User  $user
+     * @return bool
      */
     public function create(User $user): bool
     {
-        return true;
+        return $user->hasPermission('settings.create');
     }
 
     /**
-     * Determine whether the user can update the model.
+     * Determine if the user can update a specific user.
+     *
+     * @param  \App\Models\User  $user
+     * @param  \App\Models\User  $model
+     * @return bool
      */
-    public function update(User $user, Setting $setting): bool
+    public function update(User $user): bool
     {
-        return true;
+        return $user->hasPermission('settings.update');
     }
 
     /**
-     * Determine whether the user can delete the model.
+     * Determine if the user can delete a specific user.
+     *
+     * @param  \App\Models\User  $user
+     * @param  \App\Models\User  $model
+     * @return bool
      */
-    public function delete(User $user, Setting $setting): bool
+    public function delete(User $user): bool
     {
-        return true;
-    }
-
-    /**
-     * Determine whether the user can restore the model.
-     */
-    public function restore(User $user, Setting $setting): bool
-    {
-        return true;
-    }
-
-    /**
-     * Determine whether the user can permanently delete the model.
-     */
-    public function forceDelete(User $user, Setting $setting): bool
-    {
-        return true;
+        return $user->hasPermission('settings.delete');
     }
 }

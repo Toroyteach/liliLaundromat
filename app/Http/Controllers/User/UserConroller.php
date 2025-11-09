@@ -9,6 +9,7 @@ use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 class UserConroller extends Controller
 {
@@ -48,7 +49,7 @@ class UserConroller extends Controller
 
         $avgHandled = $totalStaff > 0 ? $totalHandledLast30 / $totalStaff : 0;
 
-        return response()->json([
+        return Inertia::render('/index', [
             'total_staff' => $totalStaff,
             'active_staff' => $activeStaff,
             'top_performance_staff' => $topPerformers,
