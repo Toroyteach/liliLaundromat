@@ -77,7 +77,7 @@ class DashboardController extends Controller
             ->limit(10)
             ->get();
 
-        return Inertia::render('dashboard/index', [
+        return Inertia::render('dashboard/page', [
             'total_revenue_today'   => $totalRevenueToday,
             'total_orders_today'    => $totalOrdersToday,
             'completed_orders'      => $completedOrders,
