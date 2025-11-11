@@ -9,11 +9,38 @@ use App\Http\Controllers\Setting\SettingConroller;
 use App\Http\Controllers\User\UserConroller;
 use App\Http\Controllers\Branch\BranchController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Auth\PasswordResetController;
+use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Auth\SignInController;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    return Inertia::render('dashboard.page');
+    return Inertia::render('dashboard/page');
 });
+
+
+Route::middleware('guest')->group(function () {
+    // Login
+    Route::get('sign-in', [SignInController::class, 'showSignInForm'])->name('login');
+    Route::post('sign-in', [SignInController::class, 'signIn']);
+
+    // Password Reset
+    Route::get('forgot-password', [PasswordResetController::class, 'showForgotPasswordForm'])->name('password.request');
+    Route::post('forgot-password', [PasswordResetController::class, 'forgotPassword']);
+
+    Route::get('reset-password', [PasswordResetController::class, 'showResetPasswordForm'])->name('password.reset');
+    Route::post('reset-password', [PasswordResetController::class, 'resetPassword']);
+});
+
+// Auth routes
+Route::middleware('auth')->group(
+    function () {
+        Route::get('complete-2fa-challenge', [SignInController::class, 'showSignInWith2FAForm'])->name('login.2fa-challenge');
+        Route::post('complete-2fa-challenge', [SignInController::class, 'signInWith2FA']);
+
+        Route::post('resend-2fa-token', [SignInController::class, 'resendTwoFAToken']);
+    }
+);
 
 Route::prefix('branches')->group(function () {
     Route::get('/', [BranchController::class, 'index']);
