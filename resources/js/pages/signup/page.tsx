@@ -60,7 +60,7 @@ export default function SignupPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-foreground mb-2">Email Address</label>
+          <label className="block text-sm font-medium text-foreground mb-2"> Address</label>
           <Input
             type="email"
             placeholder="you@example.com"

@@ -1,38 +1,28 @@
-import type React from "react";
-import { useState } from "react";
-import { router, Link } from "@inertiajs/react";
+import { Link, useForm } from "@inertiajs/react";
 import { AuthLayout } from "@/components/layouts/auth-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AlertCircle, ArrowLeft } from "lucide-react";
 
 export default function ResetPassword() {
-  const [email, setEmail] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+  const { data, setData, post, processing, errors, reset, recentlySuccessful } = useForm({
+    email: "",
+    password: "",
+    password_confirmation: "",
+    token: "",
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    setError("");
-    setMessage("");
-    try {
-      // Replace with your actual reset endpoint
-      await router.post("/forgot-password", { email });
-      setMessage("Password reset link has been sent to your email.");
-    } catch (err) {
-      console.error("Reset password error:", err);
-      setError("Failed to send password reset email.");
-    } finally {
-      setIsLoading(false);
-    }
+    post("/reset-password", {
+      onSuccess: () => reset("password", "password_confirmation"),
+    });
   };
 
   return (
     <AuthLayout>
       <Link
-        href="/login"
+        href="/sign-in"
         className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6"
       >
         <ArrowLeft className="w-4 h-4" />
@@ -40,6 +30,7 @@ export default function ResetPassword() {
       </Link>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Email */}
         <div>
           <label className="block text-sm font-medium text-foreground mb-2">
             Email Address
@@ -47,37 +38,85 @@ export default function ResetPassword() {
           <Input
             type="email"
             placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            value={data.email}
+            onChange={(e) => setData("email", e.target.value)}
             required
-            disabled={isLoading}
+            disabled={processing}
           />
+          {(errors.email || errors.error) && (
+            <p className="mt-1 text-sm text-destructive">
+              {errors.email || errors.error}
+            </p>
+          )}
         </div>
 
-        {error && (
-          <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-            <AlertCircle className="w-4 h-4 text-destructive" />
-            <p className="text-sm text-destructive">{error}</p>
+        {/* Password */}
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">
+            New Password
+          </label>
+          <Input
+            type="password"
+            placeholder="••••••••"
+            value={data.password}
+            onChange={(e) => setData("password", e.target.value)}
+            required
+            disabled={processing}
+          />
+          {errors.password && (
+            <p className="mt-1 text-sm text-destructive">{errors.password}</p>
+          )}
+        </div>
+
+        {/* Confirm Password */}
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">
+            Confirm Password
+          </label>
+          <Input
+            type="password"
+            placeholder="••••••••"
+            value={data.password_confirmation}
+            onChange={(e) => setData("password_confirmation", e.target.value)}
+            required
+            disabled={processing}
+          />
+          {errors.password_confirmation && (
+            <p className="mt-1 text-sm text-destructive">
+              {errors.password_confirmation}
+            </p>
+          )}
+        </div>
+
+        {recentlySuccessful && (
+          <div className="p-3 bg-green-100 border border-green-200 rounded-lg text-sm text-green-700">
+            Your password has been successfully reset. You can now sign in.
           </div>
         )}
 
-        {message && (
-          <div className="p-3 bg-green-100 border border-green-200 rounded-lg text-sm text-green-700">
-            {message}
+        {(errors.email || errors.password || errors.error) && !recentlySuccessful && (
+          <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+            <AlertCircle className="w-4 h-4 text-destructive" />
+            <p className="text-sm text-destructive">
+              {errors.email || errors.password || errors.error}
+            </p>
           </div>
         )}
 
         <Button
           type="submit"
           className="w-full bg-primary hover:bg-primary/90"
-          disabled={isLoading}
+          disabled={processing}
         >
-          {isLoading ? "Sending..." : "Send Reset Link"}
+          {processing ? "Resetting..." : "Reset Password"}
         </Button>
 
         <div className="text-center text-sm">
           <span className="text-muted-foreground">Remember your password? </span>
-          <Link href="/login" className="text-primary hover:underline font-medium">
+          <Link
+            href="/sign-in"
+            className="text-primary hover:underline font-medium"
+          >
             Sign in
           </Link>
         </div>

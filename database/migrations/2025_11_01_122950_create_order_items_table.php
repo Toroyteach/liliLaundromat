@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('order_items', function (Blueprint $table) {
-            $table->increments('id');
+            $table->bigIncrements('id');
             $table->foreignId('order_id')->constrained()->cascadeOnDelete();
 
             $table->string('garment_type'); // shirt / curtains / duvet etc

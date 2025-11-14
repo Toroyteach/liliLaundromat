@@ -1,41 +1,29 @@
-// --- ForgotPasswordPage.tsx ---
-import type React from "react";
-import { useState } from "react";
-import { router, Link } from "@inertiajs/react";
+import { Link, useForm } from "@inertiajs/react";
 import { AuthLayout } from "@/components/layouts/auth-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AlertCircle, ArrowLeft } from "lucide-react";
 
 export default function ForgotPassword() {
-  const [email, setEmail] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+  const { data, setData, post, processing, errors, reset, recentlySuccessful } = useForm({
+    email: "",
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    setError("");
-    setMessage("");
-    try {
-      await router.post("/forgot-password", { email });
-      setMessage("Password reset link has been sent to your email.");
-    } catch {
-      setError("Failed to send password reset email.");
-    } finally {
-      setIsLoading(false);
-    }
+    post("/forgot-password", {
+      onSuccess: () => reset(),
+    });
   };
 
   return (
     <AuthLayout>
       <Link
-        href="/login"
+        href="/sign-in"
         className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6"
       >
         <ArrowLeft className="w-4 h-4" />
-        Back to Login
+        Back to login
       </Link>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -46,32 +34,30 @@ export default function ForgotPassword() {
           <Input
             type="email"
             placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            value={data.email}
+            onChange={(e) => setData("email", e.target.value)}
             required
-            disabled={isLoading}
+            disabled={processing}
           />
+          {(errors.email || errors.error) && (
+            <p className="mt-1 text-sm text-destructive">
+              {errors.email || errors.error}
+            </p>
+          )}
         </div>
 
-        {error && (
-          <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-            <AlertCircle className="w-4 h-4 text-destructive" />
-            <p className="text-sm text-destructive">{error}</p>
-          </div>
-        )}
-
-        {message && (
+        {recentlySuccessful && (
           <div className="p-3 bg-green-100 border border-green-200 rounded-lg text-sm text-green-700">
-            {message}
+            Password reset link has been sent to your email.
           </div>
         )}
 
         <Button
           type="submit"
           className="w-full bg-primary hover:bg-primary/90"
-          disabled={isLoading}
+          disabled={processing}
         >
-          {isLoading ? "Sending..." : "Send Reset Link"}
+          {processing ? "Sending..." : "Send Reset Link"}
         </Button>
       </form>
     </AuthLayout>

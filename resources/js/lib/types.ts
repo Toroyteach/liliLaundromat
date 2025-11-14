@@ -1,29 +1,3 @@
-// User roles for RBAC
-export type UserRole = "admin" | "manager" | "staff" | "customer"
-
-// User authentication state
-export interface User {
-  id: string
-  email: string
-  name: string
-  role: UserRole
-  phone?: string
-  avatar?: string
-  createdAt: Date
-  gender?: "male" | "female"
-}
-
-// Authentication context
-export interface AuthContextType {
-  user: User | null
-  isLoading: boolean
-  isAuthenticated: boolean
-  login: (email: string, password: string) => Promise<void>
-  signup: (email: string, password: string, name: string) => Promise<void>
-  logout: () => Promise<void>
-  error: string | null
-}
-
 // Order status
 export type OrderStatus =
   | "pending"

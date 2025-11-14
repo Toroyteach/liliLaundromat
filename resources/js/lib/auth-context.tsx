@@ -1,97 +1,62 @@
-import type React from "react"
-import { createContext, useContext, useState, useCallback } from "react"
-import type { User, AuthContextType, UserRole } from "./types"
+import React, { createContext, useContext, useMemo } from "react";
+import { usePage } from "@inertiajs/react";
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
-
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const login = useCallback(async (email: string, password: string, role?: UserRole) => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      // Mock authentication - in production, validate against backend
-      // Demo credentials: admin@laundromart.com, manager@laundromart.com, staff@laundromart.com, customer@laundromart.com
-      let userRole: UserRole = "customer"
-
-      if (email.includes("admin")) userRole = "admin"
-      else if (email.includes("manager")) userRole = "manager"
-      else if (email.includes("staff")) userRole = "staff"
-      else userRole = role || "customer"
-
-      const mockUser: User = {
-        id: Math.random().toString(36).substring(7),
-        email,
-        name: email.split("@")[0],
-        role: userRole,
-        createdAt: new Date(),
-      }
-      setUser(mockUser)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed")
-      throw err
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
-  const signup = useCallback(async (email: string, password: string, name: string) => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const mockUser: User = {
-        id: Math.random().toString(36).substring(7),
-        email,
-        name,
-        role: "customer",
-        createdAt: new Date(),
-      }
-      setUser(mockUser)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Signup failed")
-      throw err
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
-  const logout = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      setUser(null)
-      setError(null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Logout failed")
-      throw err
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        isAuthenticated: !!user,
-        login,
-        signup,
-        logout,
-        error,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  )
+// -------------------- TYPES --------------------
+export interface AuthUser {
+  id: number;
+  name: string;
+  email: string;
+  status: string;
+  role: string;
+  profile_photo_path?: string | null;
 }
 
-export function useAuth() {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error("useAuth must be used within AuthProvider")
+export interface AuthData {
+  user: AuthUser | null;
+  permissions: string[];
+  primaryRole: string;
+}
+
+export interface AuthContextValue {
+  user: AuthUser | null;
+  permissions: string[];
+  primaryRole: string;
+  isAuthenticated: boolean;
+  can: (permission: string) => boolean;
+  hasRole: (role: string) => boolean;
+}
+
+// -------------------- CONTEXT --------------------
+const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+// -------------------- PROVIDER --------------------
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { props } = usePage<{ auth: AuthData }>();
+  const auth = props.auth;
+
+  const value = useMemo<AuthContextValue>(() => {
+    const user = auth?.user ?? null;
+    const permissions = auth?.permissions ?? [];
+    const primaryRole = auth?.primaryRole ?? "";
+
+    return {
+      user,
+      permissions,
+      primaryRole,
+      isAuthenticated: !!user,
+      can: (permission: string) => permissions.includes(permission),
+      hasRole: (role: string) => primaryRole === role,
+    };
+  }, [auth]);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+// -------------------- HOOK --------------------
+export const useAuth = (): AuthContextValue => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
   }
-  return context
-}
+  return context;
+};
