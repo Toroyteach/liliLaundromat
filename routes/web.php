@@ -51,6 +51,8 @@ Route::middleware('auth')->group(
 
 Route::middleware(['auth'])->group(function () {
 
+    Route::post('/logout', [SignInController::class, 'logout']);
+
     Route::get('/dashboard', [DashboardController::class, 'index']);
 
     // Track Laundry
@@ -97,6 +99,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::prefix('orders')->group(function () {
         Route::get('/', [OrderController::class, 'index']);
+        Route::get('/create', [OrderController::class, 'create']);
         Route::post('/', [OrderController::class, 'store']);
         Route::get('/{order}', [OrderController::class, 'show']);
         Route::put('/{order}', [OrderController::class, 'update']);

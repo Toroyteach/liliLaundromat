@@ -71,7 +71,6 @@ function OrdersPageContent() {
   };
 
   return (
-    <AppLayout>
       <DashboardLayout>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -98,16 +97,17 @@ function OrdersPageContent() {
           />
         </div>
       </DashboardLayout>
-    </AppLayout>
   );
 }
 
 export default function OrdersPage() {
   return (
     // Suspense boundary is required for useSearchParams
-    <React.Suspense fallback={<div>Loading...</div>}>
-      <OrdersPageContent />
-    </React.Suspense>
+    <AppLayout>
+      <React.Suspense fallback={<div>Loading...</div>}>
+        <OrdersPageContent />
+      </React.Suspense>
+    </AppLayout>
   );
 }
 function setCreateModalOpen(arg0: boolean) {

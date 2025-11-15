@@ -22,7 +22,7 @@ class SettingController extends Controller
 
             $settings = Setting::all()->pluck('value', 'key');
 
-            return Inertia::render('settings/index', [
+            return Inertia::render('settings/page', [
                 'data' => $settings
             ]);
         } catch (\Throwable $e) {

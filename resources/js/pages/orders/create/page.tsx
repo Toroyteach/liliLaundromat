@@ -2,6 +2,7 @@ import { router } from '@inertiajs/react'
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { CreateOrderStepper } from "@/components/orders/create-order-stepper";
 import type { Order, Customer } from "@/lib/types";
+import { AppLayout } from '@/layouts/AppLayout';
 
 export default function CreateOrderPage() {
 
@@ -48,16 +49,19 @@ export default function CreateOrderPage() {
   };
 
   return (
-    <DashboardLayout>
-      <div className="relative">
-        <CreateOrderStepper
-          onClose={handleClose}
-          onCreate={handleCreateOrder}
-          onSaveDraft={handleSaveDraft}
-          customers={mockCustomers}
-          isOpen={true}
-        />
-      </div>
-    </DashboardLayout>
+    <AppLayout>
+      <DashboardLayout>
+        <div className="relative">
+          <CreateOrderStepper
+            onClose={handleClose}
+            onCreate={handleCreateOrder}
+            onSaveDraft={handleSaveDraft}
+            customers={mockCustomers}
+            isOpen={true}
+          />
+        </div>
+      </DashboardLayout>
+
+    </AppLayout>
   );
 }

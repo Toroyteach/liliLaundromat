@@ -1,7 +1,13 @@
-import { router } from '@inertiajs/react'
+import { router, usePage } from '@inertiajs/react';
 import { Shirt, Droplets, Wind } from "lucide-react"
 
+interface SharedProps {
+  app_name: string;
+  // Add other shared props if needed
+}
+
 export default function AnimatedLanding() {
+  const { app_name } = usePage().props as unknown as SharedProps;
 
   const handleLaundroMartClick = () => {
     router.visit('/sign-in')
@@ -65,7 +71,7 @@ export default function AnimatedLanding() {
           <div className="flex flex-col justify-center space-y-6">
             <div>
               <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
-                Welcome to <span className="text-teal-600">LaundroHub</span>
+                Welcome to <span className="text-teal-600">{app_name}</span>
               </h1>
               <p className="text-lg md:text-xl text-gray-600 mb-6">
                 Manage your laundromat operations with ease. Track orders, process payments, and keep your business

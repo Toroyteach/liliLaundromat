@@ -36,7 +36,6 @@ class OrderController extends Controller
             $orders = Order::with([
                 'customer',
                 'items',
-                'items.garmentType',
                 'payments',
                 'branch',
             ])
@@ -74,15 +73,27 @@ class OrderController extends Controller
             });
 
             // customers list for modal + stats
-            $customers = Customer::select('id', 'name', 'phone', 'email', 'created_at')
-                ->withCount('orders as totalOrders')
+            $customers = Customer::withCount('orders as totalOrders')
                 ->withSum('orders as totalSpent', 'total_amount')
                 ->get();
 
-            return Inertia::render('order/index', [
+            return Inertia::render('orders/page', [
                 'orders' => $payload,
                 'customers' => $customers
             ]);
+        } catch (\Throwable $e) {
+            return back()->with(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function create(): Response|RedirectResponse
+    {
+        try {
+            if (!Gate::allows('create', Order::class)) {
+                abort(403, __('Unauthorized Action'));
+            }
+
+            return Inertia::render('orders/create/page');
         } catch (\Throwable $e) {
             return back()->with(['error' => $e->getMessage()], 500);
         }
@@ -95,14 +106,15 @@ class OrderController extends Controller
                 abort(403, __('Unauthorized Action'));
             }
 
-            $orders = Order::with(['customer', 'branch', 'orderItems', 'payments'])
+            $orders = Order::with(['customer', 'branch', 'items', 'payments'])
                 ->orderByDesc('created_at')
                 ->get();
+
 
             // fetch logs for all orders/items in one query to avoid N+1
             $orderIds = $orders->pluck('id')->all();
             $logs = DB::table('garmet_handling_logs')
-                ->whereIn('order_id', $orderIds)
+                ->whereIn('order_item_id', $orderIds)
                 ->orderBy('scanned_at', 'desc')
                 ->get()
                 ->groupBy(function ($row) {

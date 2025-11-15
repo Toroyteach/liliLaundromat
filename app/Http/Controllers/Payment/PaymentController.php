@@ -36,7 +36,7 @@ class PaymentController extends Controller
                     ];
                 });
 
-            return Inertia::render('payment/index', [
+            return Inertia::render('payments/page', [
                 'transactions' => $payments,
             ]);
         } catch (\Throwable $e) {

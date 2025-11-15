@@ -1,0 +1,87 @@
+services:
+  db:
+    image: mysql:8.0-debian
+    platform: linux/x86_64
+    ports:
+      - "33020:3306"
+    container_name: mysql-eazydashboard
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: woshlaundromat_db
+      MYSQL_USER: laravel_user
+      MYSQL_PASSWORD: securepassword
+      MYSQL_ROOT_PASSWORD: rootpassword
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./db-init.sql:/docker-entrypoint-initdb.d/db-init.sql
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-prootpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: woshlaundromat-app
+    container_name: laravel-backend-woshlaundromat
+    restart: unless-stopped
+    tty: true
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "true"
+      APP_URL: https://woshlaundromat.co.ke/
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: woshlaundromat_db
+      DB_USERNAME: laravel_user
+      DB_PASSWORD: securepassword
+    volumes:
+      - woshlaundromat_storage:/var/www/storage
+    ports:
+      - "8099:8099"
+    networks:
+      - app-network
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "https://woshlaundromat.co.ke/up"]
+      interval: 50s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  queue:
+    image: woshlaundromat-app
+    container_name: laravel-queue-worker
+    depends_on:
+      backend:
+        condition: service_healthy
+    volumes:
+      - woshlaundromat_storage:/var/www/storage
+    networks:
+      - app-network
+    working_dir: /var/www
+    entrypoint: ["/usr/local/bin/queue-entrypoint.sh"]
+    restart: unless-stopped
+    environment:
+      APP_URL: https://woshlaundromat.co.ke/
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: woshlaundromat_db
+      DB_USERNAME: laravel_user
+      DB_PASSWORD: securepassword
+      
+volumes:
+  db_data:
+  woshlaundromat_storage:
+
+networks:
+  app-network:
+    driver: bridge

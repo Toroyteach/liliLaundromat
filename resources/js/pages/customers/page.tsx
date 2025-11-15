@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Users, TrendingUp, ShoppingCart } from "lucide-react";
 
 import type { Customer } from "@/lib/types";
+import { AppLayout } from "@/layouts/AppLayout";
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([
@@ -72,36 +73,38 @@ export default function CustomersPage() {
   ];
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Customers</h1>
-          <p className="text-muted-foreground mt-1">
-            View and manage your customer base
-          </p>
-        </div>
+    <AppLayout>
+      <DashboardLayout>
+        <div className="space-y-6">
+          {/* Header */}
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Customers</h1>
+            <p className="text-muted-foreground mt-1">
+              View and manage your customer base
+            </p>
+          </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {stats.map((stat) => (
-            <Card key={stat.label} className="p-6">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">{stat.label}</p>
-                  <p className="text-2xl font-bold text-foreground mt-2">
-                    {stat.value}
-                  </p>
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {stats.map((stat) => (
+              <Card key={stat.label} className="p-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">{stat.label}</p>
+                    <p className="text-2xl font-bold text-foreground mt-2">
+                      {stat.value}
+                    </p>
+                  </div>
+                  <stat.icon className={`w-8 h-8 ${stat.color}`} />
                 </div>
-                <stat.icon className={`w-8 h-8 ${stat.color}`} />
-              </div>
-            </Card>
-          ))}
-        </div>
+              </Card>
+            ))}
+          </div>
 
-        {/* Customers List */}
-        <CustomersList customers={customers} onDelete={handleDeleteCustomer} onEdit={(customer) => { console.log('Edit', customer)}} />
-      </div>
-    </DashboardLayout>
+          {/* Customers List */}
+          <CustomersList customers={customers} onDelete={handleDeleteCustomer} onEdit={(customer) => { console.log('Edit', customer) }} />
+        </div>
+      </DashboardLayout>
+    </AppLayout>
   );
 }

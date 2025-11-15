@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { AppLayout } from "@/layouts/AppLayout"
+import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "next-themes";
 import { Switch } from "@/components/ui/switch";
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
@@ -8,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { PricingCategory } from "@/components/laundry-pricing";
-import { useAuth } from "@/lib/auth-context";
 import {
   User,
   Bell,
@@ -26,141 +27,9 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User as UserIcon } from "lucide-react";
 import { usePage, useForm } from '@inertiajs/react';
-import { AppLayout } from "@/layouts/AppLayout"
-
-// --- Define Types for your Props ---
-interface Permission {
-  id: number;
-  name: string;
-  description: string;
-}
-
-interface Role {
-  id: number;
-  name: string;
-  permissions: Permission[]; // Permissions this role *currently* has
-}
-
-interface PageProps {
-  roles: Role[]; // ALL roles
-  allPermissions: Permission[]; // ALL available permissions
-}
-
-// --- Icon Mapping (Example) ---
-// Maps model names (like 'orders') to an icon
-const iconMap: { [key: string]: React.ElementType } = {
-  dashboard: LayoutDashboard,
-  orders: ShoppingCart,
-  customers: UsersIcon,
-  // Add other models here...
-  default: LayoutDashboard, // Fallback icon
-};
-
-// --- Helper to group permissions ---
-const groupPermissions = (permissions: Permission[]) => {
-  return permissions.reduce((acc, permission) => {
-    const [model, ...actionParts] = permission.name.split('.');
-    if (!acc[model]) {
-      acc[model] = [];
-    }
-    acc[model].push(permission);
-    return acc;
-  }, {} as Record<string, Permission[]>);
-};
-
-// --- Sub-Component: Form for a *Single* Role ---
-// This manages the state and submission for one tab
-function RolePermissionForm({
-  role,
-  groupedPermissions,
-}: {
-  role: Role;
-  groupedPermissions: Record<string, Permission[]>;
-}) {
-  const { data, setData, put, processing, errors, recentlySuccessful } = useForm({
-    // Initialize with the IDs of permissions this role *already* has
-    permissions: role.permissions.map(p => p.id),
-  });
-
-  const handlePermissionChange = (permissionId: number, value: boolean) => {
-    if (value) {
-      // Add ID
-      setData('permissions', [...data.permissions, permissionId]);
-    } else {
-      // Remove ID
-      setData('permissions', data.permissions.filter(id => id !== permissionId));
-    }
-  };
-
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Use the new route we created
-    // put('/admin.roles.updatePermissions/'. role.id), {
-    //   preserveScroll: true,
-    // });
-  };
-
-  return (
-    <form onSubmit={submit} className="space-y-6">
-      {Object.keys(groupedPermissions).sort().map((modelName) => {
-        const CategoryIcon = iconMap[modelName] || iconMap.default;
-        return (
-          <Card key={modelName}>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                <CategoryIcon className="w-5 h-5 text-primary" />
-                {/* Capitalize model name */}
-                {modelName.charAt(0).toUpperCase() + modelName.slice(1).replace('_', ' ')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {groupedPermissions[modelName].map((perm) => (
-                <div
-                  key={perm.id}
-                  className="flex items-center justify-between p-3 border rounded-lg"
-                >
-                  <Label
-                    htmlFor={`${role.id}-${perm.id}`}
-                    className="text-sm font-normal"
-                  >
-                    {/* Use description or fallback to action name */}
-                    {perm.description || perm.name.split('.')[1] || perm.name}
-                  </Label>
-                  <Switch
-                    id={`${role.id}-${perm.id}`}
-                    checked={data.permissions.includes(perm.id)}
-                    onCheckedChange={(value) =>
-                      handlePermissionChange(perm.id, value)
-                    }
-                  />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        );
-      })}
-      <div className="pt-2">
-        <Button
-          type="submit"
-          disabled={processing}
-          className="w-full sm:w-auto"
-        >
-          <Save className="w-4 h-4 mr-2" />
-          {processing ? 'Saving...' : `Save ${role.name} Permissions`}
-        </Button>
-        {recentlySuccessful && (
-          <span className="ml-3 text-green-600">Saved!</span>
-        )}
-        {errors.permissions && (
-          <div className="text-red-500 mt-2">{errors.permissions}</div>
-        )}
-      </div>
-    </form>
-  );
-}
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  // const { user } = useAuth();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -226,11 +95,11 @@ export default function SettingsPage() {
 
   // Profile settings state
   const [profileData, setProfileData] = useState({
-    name: user?.name || "",
-    email: user?.email || "",
-    phone: user?.phone || "",
-    avatar: user?.avatar || "",
-    gender: user?.gender || "male",
+    name: "",
+    email: "",
+    phone: "",
+    avatar: "",
+    gender: "male",
   });
 
   // Business settings state
@@ -411,16 +280,16 @@ export default function SettingsPage() {
   //   // Add other categories here...
   // ];
 
-  const { roles, allPermissions } = usePage<PageProps>().props;
+  // const { roles, allPermissions } = usePage<PageProps>().props;
 
-  // Group all permissions *once* and pass to children
-  const groupedPermissions = useMemo(
-    () => groupPermissions(allPermissions),
-    [allPermissions]
-  );
+  // // Group all permissions *once* and pass to children
+  // const groupedPermissions = useMemo(
+  //   () => groupPermissions(allPermissions),
+  //   [allPermissions]
+  // );
 
   // Set default tab to the first role, or a fallback
-  const defaultRole = roles.length > 0 ? roles[0].name.toLowerCase() : 'admin';
+  // const defaultRole = roles.length > 0 ? roles[0].name.toLowerCase() : 'admin';
 
   return (
     <AppLayout>
@@ -1064,33 +933,29 @@ export default function SettingsPage() {
                 ))}
               </Tabs>
             </TabsContent> */}
-              <TabsContent
+              {/* <TabsContent
                 value="roles" // This assumes this component is inside another <Tabs>
                 className="mt-4 sm:mt-6 space-y-3 sm:space-y-4"
               >
                 <Tabs defaultValue={defaultRole} className="w-full">
                   <TabsList className={`grid w-full grid-cols-${roles.length}`}>
-                    {/* Create tabs dynamically from roles */}
                     {roles.map((role) => (
                       <TabsTrigger
                         key={role.id}
-                        value={role.name.toLowerCase()} // e.g., "admin"
+                        value={role.name.toLowerCase()} 
                       >
-                        {role.name} {/* e.g., "Admin" */}
+                        {role.name} 
                       </TabsTrigger>
                     ))}
                   </TabsList>
 
-                  {/* Create tab content dynamically from roles */}
+                  
                   {roles.map((role) => (
                     <TabsContent
                       key={role.id}
                       value={role.name.toLowerCase()}
                       className="mt-6"
                     >
-                      {/* Render the separate form component for this role.
-              This isolates state and submission logic for each tab.
-            */}
                       <RolePermissionForm
                         role={role}
                         groupedPermissions={groupedPermissions}
@@ -1098,7 +963,7 @@ export default function SettingsPage() {
                     </TabsContent>
                   ))}
                 </Tabs>
-              </TabsContent>
+              </TabsContent> */}
 
               {/* Pricing Tab */}
               <TabsContent value="pricing" className="mt-4 sm:mt-6 space-y-4">

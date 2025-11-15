@@ -12,7 +12,7 @@ interface Transaction {
   amount: number
   method: "cash" | "card" | "mpesa"
   status: "completed" | "pending" | "failed"
-  date: Date
+  date: string
 }
 
 export default function PaymentsPage() {
@@ -122,7 +122,7 @@ export default function PaymentsPage() {
                       <td className="py-3 px-4 text-foreground">{transaction.orderId}</td>
                       <td className="py-3 px-4 text-foreground">{transaction.customerName}</td>
                       <td className="py-3 px-4 text-right font-semibold text-foreground">
-                        KES {transaction.amount.toLocaleString()}
+                        KES {transaction.amount}
                       </td>
                       <td className="py-3 px-4 text-center">
                         <span
@@ -139,7 +139,7 @@ export default function PaymentsPage() {
                         </span>
                       </td>
                       <td className="py-3 px-4 text-muted-foreground">
-                        {transaction.date.toLocaleDateString()} {transaction.date.toLocaleTimeString()}
+                        {transaction.date} {transaction.date}
                       </td>
                     </tr>
                   ))}

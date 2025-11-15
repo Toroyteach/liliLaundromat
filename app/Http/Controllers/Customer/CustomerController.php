@@ -33,7 +33,7 @@ class CustomerController extends Controller
                 ->orderByDesc('created_at')
                 ->paginate(20);
 
-            return Inertia::render('customers/index', [
+            return Inertia::render('customers/page', [
                 'stats' => [
                     'total_customers' => $totalCustomers,
                     'total_revenue'   => $totalRevenue,
