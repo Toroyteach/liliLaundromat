@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Http\RedirectResponse;
 use App\Http\Requests\UpdateSettingsRequest;
 
-class SettingConroller extends Controller
+class SettingController extends Controller
 {
     public function index(): Response|RedirectResponse
     {

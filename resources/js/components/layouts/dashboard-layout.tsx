@@ -57,8 +57,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       { href: "/payments", label: "Payments", icon: CreditCard, permission: "payments.read" },
       { href: "/reports", label: "Reports", icon: BarChart3, permission: "reports.read" },
       { href: "/customers", label: "Customers", icon: Users, permission: "customers.read" },
-      { href: "/staff", label: "Staff", icon: Users2, permission: "users.read" },
-      { href: "/hardware", label: "Hardware", icon: Zap, permission: "settings.read" },
+      { href: "/users", label: "Staff", icon: Users2, permission: "users.read" },
+      // { href: "/hardware", label: "Hardware", icon: Zap, permission: "settings.read" },
       { href: "/settings", label: "Settings", icon: Settings, permission: "settings.read" },
     ];
 

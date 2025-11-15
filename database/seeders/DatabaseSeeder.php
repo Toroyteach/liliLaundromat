@@ -117,6 +117,7 @@ class DatabaseSeeder extends Seeder
             // invoice
             Invoice::factory()->create([
                 'order_id' => $order->id,
+                'customer_id' => $order->customer->id,
                 'subtotal' => 300,
                 'total' => 300,
                 'sent_to_customer' => true
@@ -124,7 +125,7 @@ class DatabaseSeeder extends Seeder
         }
 
 
-        // SETTINGS
+        // // SETTINGS
         Setting::create([
             'key' => 'company_name',
             'value' => 'Wosh Laundry Ltd'
@@ -208,5 +209,93 @@ class DatabaseSeeder extends Seeder
             ['user_id' => $admin->id, 'role_id' => $adminRoleId],
             ['user_id' => $cashier->id, 'role_id' => $cashierRoleId],
         ]);
+
+
+        // Seeded data to the database
+        // ---------------------------------------------
+        // EXTRA CUSTOMERS FOR MORE REALISTIC DASHBOARD
+        // ---------------------------------------------
+        $customers = Customer::factory()->count(20)->create();
+
+
+        // ---------------------------------------------
+        // EXTRA ORDERS WITH DIFFERENT STATUSES
+        // ---------------------------------------------
+        $statuses = ['pending', 'in-progress', 'ready', 'completed'];
+
+        foreach (range(1, 25) as $i) {
+
+            $customer = $customers->random();
+
+            $order = Order::factory()->create([
+                'user_id'   => $admin->id,
+                'branch_id' => $branch1->id,
+                'customer_id' => $customer->id,
+                'status'    => $statuses[array_rand($statuses)],
+                'created_at' => now()->subDays(rand(0, 7)),
+            ]);
+
+            // ORDER ITEMS
+            OrderItem::factory()->count(rand(1, 3))->create([
+                'order_id' => $order->id,
+                'garment_type' => 'Shirt/Blouse',
+                'pricing_mode' => 'per_piece',
+                'quantity' => rand(1, 5),
+                'unit_price' => 150,
+                'total_price' => 150 * rand(1, 5),
+                'status' => 'done'
+            ]);
+
+            // PAYMENTS (mixed methods)
+            Payment::factory()->create([
+                'order_id' => $order->id,
+                'customer_id' => $customer->id,
+                'processed_by_user_id' => $cashier->id,
+                'amount' => rand(300, 5000),
+                'method' => collect(['cash', 'mpesa', 'card', 'invoice'])->random(),
+                'status' => collect(['success', 'pending'])->random(),
+                'paid_at' => now()->subDays(rand(0, 7)),
+            ]);
+
+            // INVOICES (some pending)
+            Invoice::factory()->create([
+                'order_id' => $order->id,
+                'customer_id' => $customer->id,
+                'subtotal' => rand(300, 5000),
+                'total' => rand(300, 5000),
+                'sent_to_customer' => rand(0, 1),
+            ]);
+        }
+
+
+        // // ---------------------------------------------
+        // // LOST & DAMAGED ITEMS LOGS
+        // // ---------------------------------------------
+        // foreach (range(1, 5) as $i) {
+        //     DB::table('garmet_handling_logs')->insert([
+        //         'order_item_id' => Order::inRandomOrder()->first()->id,
+        //         'stage' => collect(['lost', 'damaged'])->random(),
+        //         'description' => 'Item issue reported during processing',
+        //         'handled_by_user_id' => $cashier->id,
+        //         'scanned_at' => now()->subDays(rand(0, 5)),
+        //         'created_at' => now(),
+        //         'updated_at' => now(),
+        //     ]);
+        // }
+
+
+        // // ---------------------------------------------
+        // // RECENT PAYMENTS (CLEAR FOR DASHBOARD DISPLAY)
+        // // ---------------------------------------------
+        // foreach (range(1, 10) as $i) {
+        //     Payment::factory()->create([
+        //         'amount' => rand(500, 5000),
+        //         'method' => collect(['mpesa', 'cash', 'card'])->random(),
+        //         'status' => collect(['success', 'pending'])->random(),
+        //         'paid_at' => now()->subHours(rand(1, 48)),
+        //         'customer_id' => $customers->random()->id,
+        //         'processed_by_user_id' => $cashier->id,
+        //     ]);
+        // }
     }
 }

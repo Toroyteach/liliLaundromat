@@ -8,6 +8,7 @@ import { Plus } from "lucide-react";
 import type { Order, OrderStatus, Customer } from "@/lib/types";
 import { useAuth } from "@/lib/auth-context";
 import React from "react";
+import { AppLayout } from "@/layouts/AppLayout"
 
 function OrdersPageContent() {
   const { url } = usePage()
@@ -22,45 +23,13 @@ function OrdersPageContent() {
   }, [searchParams]);
 
   // Mock data for customers and orders
-  const [customers, setCustomers] = useState<Customer[]>([
-    {
-      id: "CUST-1678886400000",
-      name: "John Doe",
-      phone: "+254712345678",
-      email: "john.doe@example.com",
-      createdAt: new Date(),
-      totalOrders: 1,
-      totalSpent: 2500,
-    },
-  ]);
+  // ⬅ Pull initial data from backend
+  const initialOrders = (usePage().props.orders ?? []) as Order[];
+  const initialCustomers = (usePage().props.customers ?? []) as Customer[];
 
-  const [orders, setOrders] = useState<Order[]>([
-    {
-      id: "ORD-001",
-      customerId: "CUST-1678886400000",
-      customerName: "John Doe",
-      customerPhone: "+254712345678",
-      items: [
-        {
-          id: "ORD-001-ITM-1",
-          barcode: "some-barcode-1", // Added barcode
-          name: "Shirts",
-          quantity: 5,
-          serviceType: "wash-dry",
-          status: "drying",
-          trackingHistory: [], // Added trackingHistory
-        },
-      ],
-      status: "in-progress", // Corrected status from "processing"
-      totalPrice: 2500,
-      weight: 5.5,
-      paymentMethod: "cash",
-      paymentStatus: "completed",
-      createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000),
-      barcode: "ORD-001-BARCODE", // Added barcode
-      trackingHistory: [], // Added trackingHistory
-    },
-  ]);
+  // ⬅ Local state so UI can update without reloading
+  const [orders, setOrders] = useState<Order[]>(initialOrders);
+  const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
 
   const handleCreateOrder = (newOrder: Order) => {
     setOrders((prev) => [newOrder, ...prev]);
@@ -102,7 +71,7 @@ function OrdersPageContent() {
   };
 
   return (
-    <>
+    <AppLayout>
       <DashboardLayout>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -113,12 +82,12 @@ function OrdersPageContent() {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              {canCreateOrder && (
-                <Button onClick={() => router.visit("/orders/create")}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create New Order
-                </Button>
-              )}
+              {/* {canCreateOrder && ( */}
+              <Button onClick={() => router.visit("/orders/create")}>
+                <Plus className="w-4 h-4 mr-2" />
+                Create New Order
+              </Button>
+              {/* )} */}
             </div>
           </div>
 
@@ -129,7 +98,7 @@ function OrdersPageContent() {
           />
         </div>
       </DashboardLayout>
-    </>
+    </AppLayout>
   );
 }
 

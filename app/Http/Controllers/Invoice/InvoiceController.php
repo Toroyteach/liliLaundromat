@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class InvoiceConroller extends Controller
+class InvoiceController extends Controller
 {
     public function index(): Response|RedirectResponse
     {

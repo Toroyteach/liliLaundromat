@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('password');
             $table->rememberToken();
             $table->enum('status', ['active', 'suspended'])->default('active');
-            $table->string('role')->index(); // admin, staff, cashier, etc
+            $table->string('role')->default('user')->index(); // admin, staff, cashier, etc
             $table->string('profile_photo_path', 2048)->nullable();
             $table->timestamps();
         });

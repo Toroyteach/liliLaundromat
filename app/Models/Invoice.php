@@ -11,7 +11,7 @@ class Invoice extends Model
     /** @use HasFactory<\Database\Factories\InvoiceFactory> */
     use HasFactory, Auditable;
 
-    protected $fillable = ['order_id', 'invoice_number', 'subtotal', 'discount', 'tax', 'total', 'sent_to_customer', 'generated_at'];
+    protected $fillable = ['order_id', 'customer_id', 'invoice_number', 'subtotal', 'discount', 'tax', 'total', 'sent_to_customer', 'generated_at'];
 
 
     protected $casts = [
@@ -26,5 +26,10 @@ class Invoice extends Model
     public function order()
     {
         return $this->belongsTo(Order::class);
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
     }
 }

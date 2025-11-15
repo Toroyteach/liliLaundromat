@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class GarmetTypeConroller extends Controller
+class GarmetTypeController extends Controller
 {
     public function index()
     {

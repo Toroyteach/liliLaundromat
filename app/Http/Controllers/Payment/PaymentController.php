@@ -12,7 +12,7 @@ use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class PaymentConroller extends Controller
+class PaymentController extends Controller
 {
     public function index(): Response|RedirectResponse
     {
@@ -21,8 +21,23 @@ class PaymentConroller extends Controller
                 abort(403, __('Unauthorized Action'));
             }
 
+            $payments = Payment::with(['order.customer'])
+                ->orderByDesc('created_at')
+                ->get()
+                ->map(function ($payment) {
+                    return [
+                        'id' => $payment->id,
+                        'orderId' => $payment->order?->id ?? null,
+                        'customerName' => $payment->customer?->name ?? 'Unknown',
+                        'amount' => $payment->amount,
+                        'method' => $payment->method,
+                        'status' => $payment->status,
+                        'date' => $payment->paid_at ?? $payment->created_at,
+                    ];
+                });
+
             return Inertia::render('payment/index', [
-                'data' => Payment::all()
+                'transactions' => $payments,
             ]);
         } catch (\Throwable $e) {
             return back()->with(['error' => $e->getMessage()], 500);

@@ -85,17 +85,6 @@ export default function LoginPage() {
         >
           {processing ? "Signing in..." : "Sign In"}
         </Button>
-
-        {/* Footer */}
-        <div className="text-center text-sm">
-          <span className="text-muted-foreground">Don’t have an account? </span>
-          <Link
-            href="/sign-up"
-            className="text-primary hover:underline font-medium"
-          >
-            Sign up
-          </Link>
-        </div>
       </form>
     </AuthLayout>
   );

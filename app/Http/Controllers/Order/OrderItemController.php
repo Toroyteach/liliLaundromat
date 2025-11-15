@@ -13,7 +13,7 @@ use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class OrderItemConroller extends Controller
+class OrderItemController extends Controller
 {
     public function index(): Response|RedirectResponse
     {

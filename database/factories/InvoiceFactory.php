@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Customer;
 use App\Models\Order;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -19,6 +20,7 @@ class InvoiceFactory extends Factory
     {
         return [
             'order_id' => Order::factory(),
+            'customer_id' => Customer::factory(),
             'invoice_number' => fake()->unique()->numerify('INV####'),
             'subtotal' => 2000,
             'discount' => 0,

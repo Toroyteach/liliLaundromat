@@ -17,7 +17,6 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [validationError, setValidationError] = useState("")
-  const { signup, error } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -35,7 +34,7 @@ export default function SignupPage() {
 
     setIsLoading(true)
     try {
-      await signup(email, password, name)
+      // await signup(email, password, name)
       router.visit('/dashboard')
     } catch (err) {
       console.error("Signup error:", err)
@@ -60,7 +59,7 @@ export default function SignupPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-foreground mb-2"> Address</label>
+          <label className="block text-sm font-medium text-foreground mb-2">Email Address</label>
           <Input
             type="email"
             placeholder="you@example.com"
@@ -95,12 +94,12 @@ export default function SignupPage() {
           />
         </div>
 
-        {(error || validationError) && (
+        {/* {(error || validationError) && (
           <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
             <AlertCircle className="w-4 h-4 text-destructive" />
             <p className="text-sm text-destructive">{error || validationError}</p>
           </div>
-        )}
+        )} */}
 
         <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={isLoading}>
           {isLoading ? "Creating account..." : "Create Account"}

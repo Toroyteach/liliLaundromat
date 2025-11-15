@@ -151,6 +151,29 @@ class RolePermissionController extends Controller
     }
 
     /**
+     * Update a role's permissions.
+     */
+    public function updateRolePermissions(Request $request, Role $role)
+    {
+        if (!Gate::allows('update', $role)) {
+            return back()->with('error', __('You do not have permission to edit this role'));
+        }
+
+        try {
+            $validated = $request->validate([
+                'permissions' => 'required|array',
+                'permissions.*' => 'exists:permissions,id',
+            ]);
+
+            $role->permissions()->sync($validated['permissions']);
+
+            return back()->with('success', __('Permissions updated successfully'));
+        } catch (\Exception $e) {
+            return back()->with('error', __('Failed to update permissions') . $e->getMessage());
+        }
+    }
+
+    /**
      * Update a role
      */
     public function update(Request $request, Role $role)

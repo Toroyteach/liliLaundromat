@@ -6,22 +6,41 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCustomerRequest;
 use App\Http\Requests\UpdateCustomerRequest;
 use App\Models\Customer;
+use App\Models\Payment;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
-class CustomerConroller extends Controller
+
+class CustomerController extends Controller
 {
     public function index(): Response|RedirectResponse
     {
         try {
-
             if (!Gate::allows('viewAny', Customer::class)) {
                 abort(403, __('Unauthorized Action'));
             }
 
-            $customers = Customer::orderBy('created_at', 'desc')->paginate(20);
-            return Inertia::render('/index', [ '' => $customers]);
+            $totalCustomers = Customer::count();
+
+            $totalRevenue = Payment::sum('amount');
+
+            $avgPerCustomer = Customer::withSum('payments', 'amount')
+                ->get()
+                ->avg('payments_sum_amount');
+
+            $customers = Customer::select('id', 'name', 'phone', 'email', 'created_at')
+                ->orderByDesc('created_at')
+                ->paginate(20);
+
+            return Inertia::render('customers/index', [
+                'stats' => [
+                    'total_customers' => $totalCustomers,
+                    'total_revenue'   => $totalRevenue,
+                    'avg_per_customer' => $avgPerCustomer,
+                ],
+                'customers' => $customers
+            ]);
         } catch (\Throwable $e) {
             return back()->with(['error' => $e->getMessage()], 500);
         }

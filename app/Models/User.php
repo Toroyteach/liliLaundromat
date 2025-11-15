@@ -117,6 +117,7 @@ class User extends Authenticatable
         //     ->values();
         return collect([
             'dashboard.view',
+            'orders.view',
             'orders.read',
             'orders.create',
             'payments.read',

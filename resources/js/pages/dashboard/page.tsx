@@ -26,208 +26,139 @@ import { AppLayout } from "@/layouts/AppLayout";
 
 export default function DashboardPage() {
   const [dateRange, setDateRange] = useState("7days");
-  const { props } = usePage<{ auth?: { user?: any } }>();
+  const { props } = usePage();
 
   const user = props.auth?.user;
 
   const canCreateOrder = user && user.roles?.[0]?.name !== "customer";
-  // Dashboard stats
+
+  // ------------------------------  
+  // DASHBOARD STATS FROM BACKEND  
+  // ------------------------------
   const stats = [
     {
       label: "Total Revenue (Today)",
-      value: "KES 15,240",
+      value: `KES ${props.total_revenue_today ?? 0}`,
       icon: TrendingUp,
       color: "text-purple-600",
     },
     {
       label: "Total Orders (Today)",
-      value: "12",
+      value: props.total_orders_today ?? 0,
       icon: ShoppingCart,
       color: "text-blue-600",
     },
     {
       label: "Completed Orders",
-      value: "8",
+      value: props.completed_orders ?? 0,
       icon: CheckCircle,
       color: "text-green-600",
     },
     {
       label: "Pending Invoices",
-      value: "3",
+      value: props.pending_invoices ?? 0,
       icon: FileText,
       color: "text-orange-600",
     },
     {
       label: "Lost/Damaged Items",
-      value: "1",
+      value: props.lost_damaged_items ?? 0,
       icon: FileWarning,
       color: "text-red-600",
     },
     {
       label: "New Customers",
-      value: "5",
+      value: props.new_customers_today ?? 0,
       icon: UserPlus,
       color: "text-purple-600",
     },
     {
       label: "Total Customers",
-      value: "248",
+      value: props.total_customers ?? 0,
       icon: Users,
       color: "text-green-600",
     },
   ];
 
-  // Analytics data from analytics page
-  const revenueData = [
-    { date: "Mon", revenue: 45000, target: 50000 },
-    { date: "Tue", revenue: 52000, target: 50000 },
-    { date: "Wed", revenue: 48000, target: 50000 },
-    { date: "Thu", revenue: 61000, target: 50000 },
-    { date: "Fri", revenue: 55000, target: 50000 },
-    { date: "Sat", revenue: 67000, target: 50000 },
-    { date: "Sun", revenue: 58000, target: 50000 },
-  ];
+  // ------------------------------  
+  // WEEKLY REVENUE (FORMAT TO MATCH CHART)  
+  // ------------------------------
+  const revenueData = props.weekly_revenue?.map((item: any) => ({
+    date: item.day_label,     // e.g. "Mon"
+    revenue: item.total,
+    target: 50000,
+  })) ?? [];
 
-  const paymentMethodsData = [
-    { name: "M-Pesa", value: 400 },
-    { name: "Cash", value: 300 },
-    { name: "Card", value: 200 },
-    { name: "Invoice", value: 100 },
-  ];
+  // ------------------------------  
+  // PAYMENT METHODS  
+  // ------------------------------
+  const paymentMethodsData =
+    props.payment_methods?.map((item: any) => ({
+      name: item.method,
+      value: item.value,
+    })) ?? [];
 
-  const recentOrdersData = [
-    {
-      id: "ORD-001",
-      customerName: "John Doe",
-      status: "completed" as const,
-      totalPrice: 2500,
-      createdAt: new Date(),
-    },
-    {
-      id: "ORD-002",
-      customerName: "Jane Smith",
-      status: "in-progress" as const,
-      totalPrice: 1500,
-      createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-    },
-    {
-      id: "ORD-003",
-      customerName: "Mike Johnson",
-      status: "ready" as const,
-      totalPrice: 3000,
-      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    },
-  ];
+  // ------------------------------  
+  // RECENT ORDERS  
+  // ------------------------------
+  const recentOrdersData =
+    props.recent_orders?.map((o: any) => ({
+      id: o.id,
+      customerName: o.customer_name,
+      status: o.status,
+      totalPrice: o.total_price,
+      createdAt: o.created_at,
+    })) ?? [];
 
-  const outstandingInvoicesData = [
-    {
-      id: "INV-001",
-      customerName: "Emily White",
-      amount: 1200,
-      dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
-    },
-    {
-      id: "INV-002",
-      customerName: "Chris Green",
-      amount: 800,
-      dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-    },
-  ];
+  // ------------------------------  
+  // OUTSTANDING INVOICES  
+  // ------------------------------
+  const outstandingInvoicesData =
+    props.outstanding_invoices?.map((i: any) => ({
+      id: i.id,
+      customerName: i.customer_name,
+      amount: i.subtotal,
+      dueDate: 'today',
+    })) ?? [];
 
-  const recentPaymentsData = [
-    {
-      id: "TXN-001",
-      amount: 2500,
-      method: "mpesa" as const,
-      status: "completed" as const,
-    },
-    {
-      id: "TXN-002",
-      amount: 1500,
-      method: "cash" as const,
-      status: "completed" as const,
-    },
-    {
-      id: "TXN-003",
-      amount: 3000,
-      method: "card" as const,
-      status: "pending" as const,
-    },
-  ];
+  // ------------------------------  
+  // RECENT PAYMENTS  
+  // ------------------------------
+  const recentPaymentsData =
+    props.recent_payments?.map((t: any) => ({
+      id: t.id,
+      amount: t.amount,
+      method: t.method,
+      status: t.status,
+    })) ?? [];
 
-  const lostItemLogsData = [
-    {
-      id: "LST-001",
-      garment: "Blue Cotton Shirt (ORD-002)",
-      staffName: "Sarah",
-      reportedDate: new Date(),
-      status: "investigating" as const,
-    },
-  ];
+  // ------------------------------  
+  // LOST ITEMS  
+  // ------------------------------
+  const lostItemLogsData =
+    props.lost_items_list?.map((l: any) => ({
+      id: l.id,
+      garment: l.description,
+      staffName: l.staff_name,
+      reportedDate: l.scanned_at,
+      status: l.stage,
+    })) ?? [];
 
-  const topCustomersData = [
-    {
-      name: "Mike Johnson",
-      orders: 8,
-      spent: 24000,
-      percentage: 12,
-    },
-    {
-      name: "John Doe",
-      orders: 5,
-      spent: 12500,
-      percentage: 6,
-    },
-    {
-      name: "Jane Smith",
-      orders: 3,
-      spent: 7500,
-      percentage: 4,
-    },
-  ];
+  // ------------------------------  
+  // TOP CUSTOMERS  
+  // ------------------------------
+  const topCustomersData =
+    props.top_customers?.map((c: any) => ({
+      name: c.name,
+      orders: c.order_count,
+      spent: c.total_spent,
+      percentage: c.percentage,
+    })) ?? [];
 
-  const notificationsData = [
-    {
-      id: "notif-1",
-      icon: ShoppingCart,
-      title: "New Order Created",
-      description: "Order #ORD-004 for Jane Smith has been created.",
-      timestamp: new Date(Date.now() - 30 * 60 * 1000), // 30 minutes ago
-      href: "/orders/ORD-004",
-    },
-    {
-      id: "notif-2",
-      icon: CheckCircle,
-      title: "Order Processed",
-      description: "Order #ORD-003 is now ready for pickup.",
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-      href: "/orders/ORD-003",
-    },
-    {
-      id: "notif-3",
-      icon: UserPlus,
-      title: "User Status Updated",
-      description: "Staff member 'Bob' has been activated.",
-      timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000), // 5 hours ago
-      href: "/staff/bob",
-    },
-    {
-      id: "notif-4",
-      icon: FileWarning,
-      title: "Payment Failed",
-      description: "Payment for invoice #INV-002 failed.",
-      timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
-      href: "/payments/INV-002",
-    },
-    {
-      id: "notif-5",
-      icon: Users,
-      title: "New Customer Onboarded",
-      description: "A new customer 'David Lee' has been registered.",
-      timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
-      href: "/customers/david-lee",
-    },
-  ];
+  // ------------------------------  
+  // NOTIFICATIONS (OPTIONAL)  
+  // ------------------------------
+  const notificationsData = props.notifications ?? [];
 
   const handleGenerateReport = (type: string, format: string) => {
     alert(`Generating ${type} report in ${format.toUpperCase()} format...`);

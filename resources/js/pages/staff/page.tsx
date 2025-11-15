@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Plus, Users, Star, TrendingUp } from "lucide-react";
 import type { Staff } from "@/lib/types";
+import { AppLayout } from "@/layouts/AppLayout"
 
 export default function StaffPage() {
   const [staff, setStaff] = useState<Staff[]>([
@@ -80,124 +81,126 @@ export default function StaffPage() {
   const handlePrevPage = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">
-              Staff Management
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Manage your laundromat staff members
-            </p>
+    <AppLayout>
+      <DashboardLayout>
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">
+                Staff Management
+              </h1>
+              <p className="text-muted-foreground mt-1">
+                Manage your laundromat staff members
+              </p>
+            </div>
+            <Button
+              onClick={() => setIsAddModalOpen(true)}
+              className="bg-primary hover:bg-primary/90"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Staff
+            </Button>
           </div>
-          <Button
-            onClick={() => setIsAddModalOpen(true)}
-            className="bg-primary hover:bg-primary/90"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Staff
-          </Button>
+
+          {/* Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="p-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Staff</p>
+                  <p className="text-2xl font-bold text-foreground mt-2">
+                    {totalStaff}
+                  </p>
+                </div>
+                <Users className="w-8 h-8 text-blue-600" />
+              </div>
+            </Card>
+            <Card className="p-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Active Staff</p>
+                  <p className="text-2xl font-bold text-foreground mt-2">
+                    {activeStaff}
+                  </p>
+                </div>
+                <Users className="w-8 h-8 text-green-600" />
+              </div>
+            </Card>
+            <Card className="p-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Top Performer</p>
+                  <p className="text-2xl font-bold text-foreground mt-2">
+                    Alice J.
+                  </p>
+                </div>
+                <Star className="w-8 h-8 text-yellow-500" />
+              </div>
+            </Card>
+            <Card className="p-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    Avg. Orders Processed
+                  </p>
+                  <p className="text-2xl font-bold text-foreground mt-2">
+                    14/day
+                  </p>
+                </div>
+                <TrendingUp className="w-8 h-8 text-purple-600" />
+              </div>
+            </Card>
+          </div>
+
+          {/* Staff List */}
+          <StaffList
+            staff={currentStaff}
+            onEdit={handleEditStaff}
+            onDelete={handleDeleteStaff}
+          />
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrevPage}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNextPage}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          )}
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Staff</p>
-                <p className="text-2xl font-bold text-foreground mt-2">
-                  {totalStaff}
-                </p>
-              </div>
-              <Users className="w-8 h-8 text-blue-600" />
-            </div>
-          </Card>
-          <Card className="p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Active Staff</p>
-                <p className="text-2xl font-bold text-foreground mt-2">
-                  {activeStaff}
-                </p>
-              </div>
-              <Users className="w-8 h-8 text-green-600" />
-            </div>
-          </Card>
-          <Card className="p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Top Performer</p>
-                <p className="text-2xl font-bold text-foreground mt-2">
-                  Alice J.
-                </p>
-              </div>
-              <Star className="w-8 h-8 text-yellow-500" />
-            </div>
-          </Card>
-          <Card className="p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  Avg. Orders Processed
-                </p>
-                <p className="text-2xl font-bold text-foreground mt-2">
-                  14/day
-                </p>
-              </div>
-              <TrendingUp className="w-8 h-8 text-purple-600" />
-            </div>
-          </Card>
-        </div>
-
-        {/* Staff List */}
-        <StaffList
-          staff={currentStaff}
-          onEdit={handleEditStaff}
-          onDelete={handleDeleteStaff}
+        {/* Add Staff Modal */}
+        <AddStaffModal
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          onAdd={handleAddStaff}
         />
-
-        {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-end gap-2 pt-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handlePrevPage}
-              disabled={currentPage === 1}
-            >
-              Previous
-            </Button>
-            <span className="text-sm text-muted-foreground">
-              Page {currentPage} of {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleNextPage}
-              disabled={currentPage === totalPages}
-            >
-              Next
-            </Button>
-          </div>
+        {editingStaff && (
+          <EditStaffModal
+            isOpen={isEditModalOpen}
+            onClose={() => setIsEditModalOpen(false)}
+            onUpdate={handleUpdateStaff}
+            staffMember={editingStaff}
+          />
         )}
-      </div>
-
-      {/* Add Staff Modal */}
-      <AddStaffModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onAdd={handleAddStaff}
-      />
-      {editingStaff && (
-        <EditStaffModal
-          isOpen={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
-          onUpdate={handleUpdateStaff}
-          staffMember={editingStaff}
-        />
-      )}
-    </DashboardLayout>
+      </DashboardLayout>
+    </AppLayout>
   );
 }

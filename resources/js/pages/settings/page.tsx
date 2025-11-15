@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTheme } from "next-themes";
 import { Switch } from "@/components/ui/switch";
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
@@ -25,6 +25,139 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User as UserIcon } from "lucide-react";
+import { usePage, useForm } from '@inertiajs/react';
+import { AppLayout } from "@/layouts/AppLayout"
+
+// --- Define Types for your Props ---
+interface Permission {
+  id: number;
+  name: string;
+  description: string;
+}
+
+interface Role {
+  id: number;
+  name: string;
+  permissions: Permission[]; // Permissions this role *currently* has
+}
+
+interface PageProps {
+  roles: Role[]; // ALL roles
+  allPermissions: Permission[]; // ALL available permissions
+}
+
+// --- Icon Mapping (Example) ---
+// Maps model names (like 'orders') to an icon
+const iconMap: { [key: string]: React.ElementType } = {
+  dashboard: LayoutDashboard,
+  orders: ShoppingCart,
+  customers: UsersIcon,
+  // Add other models here...
+  default: LayoutDashboard, // Fallback icon
+};
+
+// --- Helper to group permissions ---
+const groupPermissions = (permissions: Permission[]) => {
+  return permissions.reduce((acc, permission) => {
+    const [model, ...actionParts] = permission.name.split('.');
+    if (!acc[model]) {
+      acc[model] = [];
+    }
+    acc[model].push(permission);
+    return acc;
+  }, {} as Record<string, Permission[]>);
+};
+
+// --- Sub-Component: Form for a *Single* Role ---
+// This manages the state and submission for one tab
+function RolePermissionForm({
+  role,
+  groupedPermissions,
+}: {
+  role: Role;
+  groupedPermissions: Record<string, Permission[]>;
+}) {
+  const { data, setData, put, processing, errors, recentlySuccessful } = useForm({
+    // Initialize with the IDs of permissions this role *already* has
+    permissions: role.permissions.map(p => p.id),
+  });
+
+  const handlePermissionChange = (permissionId: number, value: boolean) => {
+    if (value) {
+      // Add ID
+      setData('permissions', [...data.permissions, permissionId]);
+    } else {
+      // Remove ID
+      setData('permissions', data.permissions.filter(id => id !== permissionId));
+    }
+  };
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Use the new route we created
+    // put('/admin.roles.updatePermissions/'. role.id), {
+    //   preserveScroll: true,
+    // });
+  };
+
+  return (
+    <form onSubmit={submit} className="space-y-6">
+      {Object.keys(groupedPermissions).sort().map((modelName) => {
+        const CategoryIcon = iconMap[modelName] || iconMap.default;
+        return (
+          <Card key={modelName}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                <CategoryIcon className="w-5 h-5 text-primary" />
+                {/* Capitalize model name */}
+                {modelName.charAt(0).toUpperCase() + modelName.slice(1).replace('_', ' ')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {groupedPermissions[modelName].map((perm) => (
+                <div
+                  key={perm.id}
+                  className="flex items-center justify-between p-3 border rounded-lg"
+                >
+                  <Label
+                    htmlFor={`${role.id}-${perm.id}`}
+                    className="text-sm font-normal"
+                  >
+                    {/* Use description or fallback to action name */}
+                    {perm.description || perm.name.split('.')[1] || perm.name}
+                  </Label>
+                  <Switch
+                    id={`${role.id}-${perm.id}`}
+                    checked={data.permissions.includes(perm.id)}
+                    onCheckedChange={(value) =>
+                      handlePermissionChange(perm.id, value)
+                    }
+                  />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        );
+      })}
+      <div className="pt-2">
+        <Button
+          type="submit"
+          disabled={processing}
+          className="w-full sm:w-auto"
+        >
+          <Save className="w-4 h-4 mr-2" />
+          {processing ? 'Saving...' : `Save ${role.name} Permissions`}
+        </Button>
+        {recentlySuccessful && (
+          <span className="ml-3 text-green-600">Saved!</span>
+        )}
+        {errors.permissions && (
+          <div className="text-red-500 mt-2">{errors.permissions}</div>
+        )}
+      </div>
+    </form>
+  );
+}
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -183,668 +316,680 @@ export default function SettingsPage() {
     setTimeout(() => setSaveSuccess(false), 2000);
   };
 
-  const rolesPermissions = {
-    admin: {
-      dashboard: { view: true },
-      orders: { create: true, read: true, update: true, delete: true },
-      customers: { create: true, read: true, update: true, delete: true },
-      staff: { create: true, read: true, update: true, delete: true },
-      payments: { read: true, "process-refunds": true },
-      reports: { read: true },
-      settings: {
-        "manage-business": true,
-        "manage-pricing": true,
-        "manage-roles": true,
-      },
-    },
-    manager: {
-      dashboard: { view: true },
-      orders: { create: true, read: true, update: true, delete: false },
-      customers: { create: true, read: true, update: true, delete: false },
-      staff: { create: true, read: true, update: true, delete: false },
-      payments: { read: true, "process-refunds": true },
-      reports: { read: true },
-      settings: {
-        "manage-business": true,
-        "manage-pricing": true,
-        "manage-roles": false,
-      },
-    },
-    staff: {
-      dashboard: { view: true },
-      orders: { create: true, read: true, update: true, delete: false },
-      customers: { create: true, read: true, update: false, delete: false },
-      staff: { create: false, read: false, update: false, delete: false },
-      payments: { read: false, "process-refunds": false },
-      reports: { read: false },
-      settings: {
-        "manage-business": false,
-        "manage-pricing": false,
-        "manage-roles": false,
-      },
-    },
-  };
+  // const rolesPermissions = {
+  //   admin: {
+  //     dashboard: { view: true },
+  //     orders: { create: true, read: true, update: true, delete: true },
+  //     customers: { create: true, read: true, update: true, delete: true },
+  //     staff: { create: true, read: true, update: true, delete: true },
+  //     payments: { read: true, "process-refunds": true },
+  //     reports: { read: true },
+  //     settings: {
+  //       "manage-business": true,
+  //       "manage-pricing": true,
+  //       "manage-roles": true,
+  //     },
+  //   },
+  //   manager: {
+  //     dashboard: { view: true },
+  //     orders: { create: true, read: true, update: true, delete: false },
+  //     customers: { create: true, read: true, update: true, delete: false },
+  //     staff: { create: true, read: true, update: true, delete: false },
+  //     payments: { read: true, "process-refunds": true },
+  //     reports: { read: true },
+  //     settings: {
+  //       "manage-business": true,
+  //       "manage-pricing": true,
+  //       "manage-roles": false,
+  //     },
+  //   },
+  //   staff: {
+  //     dashboard: { view: true },
+  //     orders: { create: true, read: true, update: true, delete: false },
+  //     customers: { create: true, read: true, update: false, delete: false },
+  //     staff: { create: false, read: false, update: false, delete: false },
+  //     payments: { read: false, "process-refunds": false },
+  //     reports: { read: false },
+  //     settings: {
+  //       "manage-business": false,
+  //       "manage-pricing": false,
+  //       "manage-roles": false,
+  //     },
+  //   },
+  // };
 
-  const [permissions, setPermissions] = useState(rolesPermissions);
+  // const [permissions, setPermissions] = useState(rolesPermissions);
 
-  const handlePermissionChange = (
-    role: keyof typeof permissions,
-    category: string,
-    permission: string,
-    value: boolean
-  ) => {
-    setPermissions((prev) => ({
-      ...prev,
-      [role]: {
-        ...prev[role],
-        [category]: {
-          // @ts-ignore
-          ...prev[role][category],
-          [permission]: value,
-        },
-      },
-    }));
-  };
+  // const handlePermissionChange = (
+  //   role: keyof typeof permissions,
+  //   category: string,
+  //   permission: string,
+  //   value: boolean
+  // ) => {
+  //   setPermissions((prev) => ({
+  //     ...prev,
+  //     [role]: {
+  //       ...prev[role],
+  //       [category]: {
+  //         // @ts-ignore
+  //         ...prev[role][category],
+  //         [permission]: value,
+  //       },
+  //     },
+  //   }));
+  // };
 
-  const permissionCategories = [
-    {
-      key: "dashboard",
-      title: "Dashboard",
-      icon: LayoutDashboard,
-      permissions: [{ key: "view", label: "View Dashboard" }],
-    },
-    {
-      key: "orders",
-      title: "Order Management",
-      icon: ShoppingCart,
-      permissions: [
-        { key: "create", label: "Create Orders" },
-        { key: "read", label: "View All Orders" },
-        { key: "update", label: "Update Order Status" },
-        { key: "delete", label: "Delete Orders" },
-      ],
-    },
-    {
-      key: "customers",
-      title: "Customer Management",
-      icon: UsersIcon,
-      permissions: [
-        { key: "create", label: "Add New Customers" },
-        { key: "read", label: "View Customer Details" },
-        { key: "update", label: "Edit Customer Information" },
-        { key: "delete", label: "Delete Customers" },
-      ],
-    },
-    // Add other categories here...
-  ];
+  // const permissionCategories = [
+  //   {
+  //     key: "dashboard",
+  //     title: "Dashboard",
+  //     icon: LayoutDashboard,
+  //     permissions: [{ key: "view", label: "View Dashboard" }],
+  //   },
+  //   {
+  //     key: "orders",
+  //     title: "Order Management",
+  //     icon: ShoppingCart,
+  //     permissions: [
+  //       { key: "create", label: "Create Orders" },
+  //       { key: "read", label: "View All Orders" },
+  //       { key: "update", label: "Update Order Status" },
+  //       { key: "delete", label: "Delete Orders" },
+  //     ],
+  //   },
+  //   {
+  //     key: "customers",
+  //     title: "Customer Management",
+  //     icon: UsersIcon,
+  //     permissions: [
+  //       { key: "create", label: "Add New Customers" },
+  //       { key: "read", label: "View Customer Details" },
+  //       { key: "update", label: "Edit Customer Information" },
+  //       { key: "delete", label: "Delete Customers" },
+  //     ],
+  //   },
+  //   // Add other categories here...
+  // ];
+
+  const { roles, allPermissions } = usePage<PageProps>().props;
+
+  // Group all permissions *once* and pass to children
+  const groupedPermissions = useMemo(
+    () => groupPermissions(allPermissions),
+    [allPermissions]
+  );
+
+  // Set default tab to the first role, or a fallback
+  const defaultRole = roles.length > 0 ? roles[0].name.toLowerCase() : 'admin';
 
   return (
-    <DashboardLayout>
-      <div className="w-full space-y-4 sm:space-y-6 px-4 sm:px-0">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground text-balance">
-            Settings
-          </h1>
-          <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
-            Manage your account and system preferences
-          </p>
-        </div>
-
-        {/* Success Message */}
-        {saveSuccess && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4 flex items-center gap-2 text-sm sm:text-base">
-            <Check className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 text-green-600" />
-            <p className="text-green-700">Settings saved successfully!</p>
+    <AppLayout>
+      <DashboardLayout>
+        <div className="w-full space-y-4 sm:space-y-6 px-4 sm:px-0">
+          {/* Header */}
+          <div>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground text-balance">
+              Settings
+            </h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
+              Manage your account and system preferences
+            </p>
           </div>
-        )}
 
-        {/* Settings Tabs */}
-        <Card className="p-3 sm:p-4 md:p-6 w-full overflow-hidden">
-          <Tabs
-            value={activeTab}
-            onValueChange={setActiveTab}
-            className="w-full"
-          >
-            <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7 gap-1 sm:gap-0 mb-4 sm:mb-6">
-              <TabsTrigger
-                value="profile"
-                className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 py-2"
-              >
-                <User className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden xs:inline">Profile</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="business"
-                className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 py-2"
-              >
-                <Building2 className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden xs:inline">Business</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="notifications"
-                className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 py-2"
-              >
-                <Bell className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden xs:inline">Notify</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="security"
-                className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 py-2"
-              >
-                <Lock className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden xs:inline">Security</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="roles"
-                className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 py-2"
-              >
-                <Shield className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden xs:inline">Roles</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="pricing"
-                className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 py-2"
-              >
-                <Tag className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden xs:inline">Pricing</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="appearance"
-                className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 py-2"
-              >
-                <Palette className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden xs:inline">Appearance</span>
-              </TabsTrigger>
-            </TabsList>
+          {/* Success Message */}
+          {saveSuccess && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4 flex items-center gap-2 text-sm sm:text-base">
+              <Check className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 text-green-600" />
+              <p className="text-green-700">Settings saved successfully!</p>
+            </div>
+          )}
 
-            {/* Profile Tab */}
-            <TabsContent
-              value="profile"
-              className="mt-4 sm:mt-6 space-y-3 sm:space-y-4"
+          {/* Settings Tabs */}
+          <Card className="p-3 sm:p-4 md:p-6 w-full overflow-hidden">
+            <Tabs
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="w-full"
             >
-              <div className="flex items-center gap-4">
-                <Avatar className="h-20 w-20">
-                  <AvatarImage
-                    src={profileData.avatar}
-                    alt={profileData.name}
-                  />
-                  <AvatarFallback>
-                    {profileData.gender === "female" ? (
-                      <UserIcon className="h-10 w-10" /> // Replace with a female icon if you have one
-                    ) : (
-                      <UserIcon className="h-10 w-10" /> // Default/male icon
-                    )}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="space-y-1">
-                  <label
-                    htmlFor="avatar-upload"
-                    className="cursor-pointer inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-                  >
-                    Upload new picture
-                  </label>
-                  <input id="avatar-upload" type="file" className="hidden" />
-                  <p className="text-xs text-muted-foreground">
-                    PNG, JPG, GIF up to 10MB
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs sm:text-sm font-medium text-foreground block mb-1.5 sm:mb-2">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  value={profileData.name}
-                  onChange={(e) =>
-                    setProfileData({ ...profileData, name: e.target.value })
-                  }
-                  className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="Your full name"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs sm:text-sm font-medium text-foreground block mb-1.5 sm:mb-2">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  value={profileData.email}
-                  onChange={(e) =>
-                    setProfileData({ ...profileData, email: e.target.value })
-                  }
-                  className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="your.email@example.com"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs sm:text-sm font-medium text-foreground block mb-1.5 sm:mb-2">
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  value={profileData.phone}
-                  onChange={(e) =>
-                    setProfileData({ ...profileData, phone: e.target.value })
-                  }
-                  className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="+1 (555) 000-0000"
-                />
-              </div>
-
-              <div className="pt-2 sm:pt-4">
-                <Button
-                  onClick={handleSaveProfile}
-                  className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-sm sm:text-base py-2 sm:py-2.5"
+              <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7 gap-1 sm:gap-0 mb-4 sm:mb-6">
+                <TabsTrigger
+                  value="profile"
+                  className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 py-2"
                 >
-                  <Save className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                  Save Profile
-                </Button>
-              </div>
-            </TabsContent>
+                  <User className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden xs:inline">Profile</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="business"
+                  className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 py-2"
+                >
+                  <Building2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden xs:inline">Business</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="notifications"
+                  className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 py-2"
+                >
+                  <Bell className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden xs:inline">Notify</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="security"
+                  className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 py-2"
+                >
+                  <Lock className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden xs:inline">Security</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="roles"
+                  className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 py-2"
+                >
+                  <Shield className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden xs:inline">Roles</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="pricing"
+                  className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 py-2"
+                >
+                  <Tag className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden xs:inline">Pricing</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="appearance"
+                  className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 py-2"
+                >
+                  <Palette className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden xs:inline">Appearance</span>
+                </TabsTrigger>
+              </TabsList>
 
-            {/* Business Tab */}
-            <TabsContent
-              value="business"
-              className="mt-4 sm:mt-6 space-y-3 sm:space-y-4"
-            >
-              <div>
-                <label className="text-xs sm:text-sm font-medium text-foreground block mb-1.5 sm:mb-2">
-                  Business Name
-                </label>
-                <input
-                  type="text"
-                  value={businessData.businessName}
-                  onChange={(e) =>
-                    setBusinessData({
-                      ...businessData,
-                      businessName: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="Your business name"
-                />
-              </div>
+              {/* Profile Tab */}
+              <TabsContent
+                value="profile"
+                className="mt-4 sm:mt-6 space-y-3 sm:space-y-4"
+              >
+                <div className="flex items-center gap-4">
+                  <Avatar className="h-20 w-20">
+                    <AvatarImage
+                      src={profileData.avatar}
+                      alt={profileData.name}
+                    />
+                    <AvatarFallback>
+                      {profileData.gender === "female" ? (
+                        <UserIcon className="h-10 w-10" /> // Replace with a female icon if you have one
+                      ) : (
+                        <UserIcon className="h-10 w-10" /> // Default/male icon
+                      )}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="avatar-upload"
+                      className="cursor-pointer inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+                    >
+                      Upload new picture
+                    </label>
+                    <input id="avatar-upload" type="file" className="hidden" />
+                    <p className="text-xs text-muted-foreground">
+                      PNG, JPG, GIF up to 10MB
+                    </p>
+                  </div>
+                </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="text-xs sm:text-sm font-medium text-foreground block mb-1.5 sm:mb-2">
-                    Business Phone
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    value={profileData.name}
+                    onChange={(e) =>
+                      setProfileData({ ...profileData, name: e.target.value })
+                    }
+                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Your full name"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs sm:text-sm font-medium text-foreground block mb-1.5 sm:mb-2">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={profileData.email}
+                    onChange={(e) =>
+                      setProfileData({ ...profileData, email: e.target.value })
+                    }
+                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="your.email@example.com"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs sm:text-sm font-medium text-foreground block mb-1.5 sm:mb-2">
+                    Phone Number
                   </label>
                   <input
                     type="tel"
-                    value={businessData.businessPhone}
+                    value={profileData.phone}
                     onChange={(e) =>
-                      setBusinessData({
-                        ...businessData,
-                        businessPhone: e.target.value,
-                      })
+                      setProfileData({ ...profileData, phone: e.target.value })
                     }
                     className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     placeholder="+1 (555) 000-0000"
                   />
                 </div>
 
-                <div>
-                  <label className="text-xs sm:text-sm font-medium text-foreground block mb-1.5 sm:mb-2">
-                    Business Email
-                  </label>
-                  <input
-                    type="email"
-                    value={businessData.businessEmail}
-                    onChange={(e) =>
-                      setBusinessData({
-                        ...businessData,
-                        businessEmail: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="business@example.com"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs sm:text-sm font-medium text-foreground block mb-1.5 sm:mb-2">
-                  Address
-                </label>
-                <input
-                  type="text"
-                  value={businessData.address}
-                  onChange={(e) =>
-                    setBusinessData({
-                      ...businessData,
-                      address: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="123 Main Street, City, State 12345"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs sm:text-sm font-medium text-foreground block mb-1.5 sm:mb-2">
-                  Operating Hours
-                </label>
-                <input
-                  type="text"
-                  value={businessData.operatingHours}
-                  onChange={(e) =>
-                    setBusinessData({
-                      ...businessData,
-                      operatingHours: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="Mon-Sun: 6:00 AM - 10:00 PM"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div>
-                  <label className="text-xs sm:text-sm font-medium text-foreground block mb-1.5 sm:mb-2">
-                    Currency
-                  </label>
-                  <select
-                    value={businessData.currency}
-                    onChange={(e) =>
-                      setBusinessData({
-                        ...businessData,
-                        currency: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                <div className="pt-2 sm:pt-4">
+                  <Button
+                    onClick={handleSaveProfile}
+                    className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-sm sm:text-base py-2 sm:py-2.5"
                   >
-                    <option value="USD">USD ($)</option>
-                    <option value="EUR">EUR (€)</option>
-                    <option value="GBP">GBP (£)</option>
-                    <option value="KES">KES (Ksh)</option>
-                  </select>
+                    <Save className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                    Save Profile
+                  </Button>
                 </div>
+              </TabsContent>
 
+              {/* Business Tab */}
+              <TabsContent
+                value="business"
+                className="mt-4 sm:mt-6 space-y-3 sm:space-y-4"
+              >
                 <div>
                   <label className="text-xs sm:text-sm font-medium text-foreground block mb-1.5 sm:mb-2">
-                    Tax Rate (%)
+                    Business Name
                   </label>
                   <input
-                    type="number"
-                    value={businessData.taxRate}
+                    type="text"
+                    value={businessData.businessName}
                     onChange={(e) =>
                       setBusinessData({
                         ...businessData,
-                        taxRate: e.target.value,
+                        businessName: e.target.value,
                       })
                     }
                     className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="8.5"
-                    step="0.1"
+                    placeholder="Your business name"
                   />
                 </div>
-              </div>
 
-              <div className="pt-2 sm:pt-4">
-                <Button
-                  onClick={handleSaveBusiness}
-                  className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-sm sm:text-base py-2 sm:py-2.5"
-                >
-                  <Save className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                  Save Business Settings
-                </Button>
-              </div>
-            </TabsContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div>
+                    <label className="text-xs sm:text-sm font-medium text-foreground block mb-1.5 sm:mb-2">
+                      Business Phone
+                    </label>
+                    <input
+                      type="tel"
+                      value={businessData.businessPhone}
+                      onChange={(e) =>
+                        setBusinessData({
+                          ...businessData,
+                          businessPhone: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="+1 (555) 000-0000"
+                    />
+                  </div>
 
-            {/* Notifications Tab */}
-            <TabsContent
-              value="notifications"
-              className="mt-4 sm:mt-6 space-y-2 sm:space-y-3"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2.5 sm:p-4 border border-border rounded-lg gap-3 sm:gap-0">
-                <div className="flex-1">
-                  <p className="text-sm sm:text-base font-medium text-foreground">
-                    Email Notifications
-                  </p>
-                  <p className="text-xs sm:text-sm text-muted-foreground">
-                    Receive updates via email
-                  </p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={notificationData.emailNotifications}
-                  onChange={(e) =>
-                    setNotificationData({
-                      ...notificationData,
-                      emailNotifications: e.target.checked,
-                    })
-                  }
-                  className="w-5 h-5 rounded border-border shrink-0"
-                />
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2.5 sm:p-4 border border-border rounded-lg gap-3 sm:gap-0">
-                <div className="flex-1">
-                  <p className="text-sm sm:text-base font-medium text-foreground">
-                    SMS Notifications
-                  </p>
-                  <p className="text-xs sm:text-sm text-muted-foreground">
-                    Receive updates via SMS
-                  </p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={notificationData.smsNotifications}
-                  onChange={(e) =>
-                    setNotificationData({
-                      ...notificationData,
-                      smsNotifications: e.target.checked,
-                    })
-                  }
-                  className="w-5 h-5 rounded border-border shrink-0"
-                />
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2.5 sm:p-4 border border-border rounded-lg gap-3 sm:gap-0">
-                <div className="flex-1">
-                  <p className="text-sm sm:text-base font-medium text-foreground">
-                    Order Updates
-                  </p>
-                  <p className="text-xs sm:text-sm text-muted-foreground">
-                    Get notified about order status changes
-                  </p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={notificationData.orderUpdates}
-                  onChange={(e) =>
-                    setNotificationData({
-                      ...notificationData,
-                      orderUpdates: e.target.checked,
-                    })
-                  }
-                  className="w-5 h-5 rounded border-border shrink-0"
-                />
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2.5 sm:p-4 border border-border rounded-lg gap-3 sm:gap-0">
-                <div className="flex-1">
-                  <p className="text-sm sm:text-base font-medium text-foreground">
-                    Payment Alerts
-                  </p>
-                  <p className="text-xs sm:text-sm text-muted-foreground">
-                    Get notified about payment transactions
-                  </p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={notificationData.paymentAlerts}
-                  onChange={(e) =>
-                    setNotificationData({
-                      ...notificationData,
-                      paymentAlerts: e.target.checked,
-                    })
-                  }
-                  className="w-5 h-5 rounded border-border shrink-0"
-                />
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2.5 sm:p-4 border border-border rounded-lg gap-3 sm:gap-0">
-                <div className="flex-1">
-                  <p className="text-sm sm:text-base font-medium text-foreground">
-                    Staff Alerts
-                  </p>
-                  <p className="text-xs sm:text-sm text-muted-foreground">
-                    Get notified about staff activities
-                  </p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={notificationData.staffAlerts}
-                  onChange={(e) =>
-                    setNotificationData({
-                      ...notificationData,
-                      staffAlerts: e.target.checked,
-                    })
-                  }
-                  className="w-5 h-5 rounded border-border shrink-0"
-                />
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2.5 sm:p-4 border border-border rounded-lg gap-3 sm:gap-0">
-                <div className="flex-1">
-                  <p className="text-sm sm:text-base font-medium text-foreground">
-                    Daily Report
-                  </p>
-                  <p className="text-xs sm:text-sm text-muted-foreground">
-                    Receive daily business summary
-                  </p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={notificationData.dailyReport}
-                  onChange={(e) =>
-                    setNotificationData({
-                      ...notificationData,
-                      dailyReport: e.target.checked,
-                    })
-                  }
-                  className="w-5 h-5 rounded border-border shrink-0"
-                />
-              </div>
-
-              <div className="pt-2 sm:pt-4">
-                <Button
-                  onClick={handleSaveNotifications}
-                  className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-sm sm:text-base py-2 sm:py-2.5"
-                >
-                  <Save className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                  Save Notification Settings
-                </Button>
-              </div>
-            </TabsContent>
-
-            {/* Security Tab */}
-            <TabsContent
-              value="security"
-              className="mt-4 sm:mt-6 space-y-3 sm:space-y-4"
-            >
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5 sm:p-4 mb-2 sm:mb-4">
-                <p className="text-xs sm:text-sm text-blue-700">
-                  Keep your account secure by using a strong password. Change
-                  your password regularly.
-                </p>
-              </div>
-
-              <div>
-                <label className="text-xs sm:text-sm font-medium text-foreground block mb-1.5 sm:mb-2">
-                  Current Password
-                </label>
-                <input
-                  type="password"
-                  value={securityData.currentPassword}
-                  onChange={(e) =>
-                    setSecurityData({
-                      ...securityData,
-                      currentPassword: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="Enter your current password"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs sm:text-sm font-medium text-foreground block mb-1.5 sm:mb-2">
-                  New Password
-                </label>
-                <input
-                  type="password"
-                  value={securityData.newPassword}
-                  onChange={(e) =>
-                    setSecurityData({
-                      ...securityData,
-                      newPassword: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="Enter your new password"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs sm:text-sm font-medium text-foreground block mb-1.5 sm:mb-2">
-                  Confirm Password
-                </label>
-                <input
-                  type="password"
-                  value={securityData.confirmPassword}
-                  onChange={(e) =>
-                    setSecurityData({
-                      ...securityData,
-                      confirmPassword: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="Confirm your new password"
-                />
-              </div>
-
-              <div className="pt-2 sm:pt-4">
-                <Button
-                  onClick={handleChangePassword}
-                  className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-sm sm:text-base py-2 sm:py-2.5"
-                >
-                  <Lock className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                  Change Password
-                </Button>
-              </div>
-
-              <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-border">
-                <h3 className="text-sm sm:text-base font-semibold text-foreground mb-3 sm:mb-4">
-                  Active Sessions
-                </h3>
-                <div className="space-y-2 sm:space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2.5 sm:p-4 border border-border rounded-lg gap-2 sm:gap-0">
-                    <div className="flex-1">
-                      <p className="text-sm sm:text-base font-medium text-foreground">
-                        Current Session
-                      </p>
-                      <p className="text-xs sm:text-sm text-muted-foreground">
-                        Chrome on Windows
-                      </p>
-                    </div>
-                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded w-fit">
-                      Active
-                    </span>
+                  <div>
+                    <label className="text-xs sm:text-sm font-medium text-foreground block mb-1.5 sm:mb-2">
+                      Business Email
+                    </label>
+                    <input
+                      type="email"
+                      value={businessData.businessEmail}
+                      onChange={(e) =>
+                        setBusinessData({
+                          ...businessData,
+                          businessEmail: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="business@example.com"
+                    />
                   </div>
                 </div>
-              </div>
-            </TabsContent>
 
-            {/* Roles & Permissions Tab */}
-            <TabsContent
+                <div>
+                  <label className="text-xs sm:text-sm font-medium text-foreground block mb-1.5 sm:mb-2">
+                    Address
+                  </label>
+                  <input
+                    type="text"
+                    value={businessData.address}
+                    onChange={(e) =>
+                      setBusinessData({
+                        ...businessData,
+                        address: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="123 Main Street, City, State 12345"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs sm:text-sm font-medium text-foreground block mb-1.5 sm:mb-2">
+                    Operating Hours
+                  </label>
+                  <input
+                    type="text"
+                    value={businessData.operatingHours}
+                    onChange={(e) =>
+                      setBusinessData({
+                        ...businessData,
+                        operatingHours: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Mon-Sun: 6:00 AM - 10:00 PM"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div>
+                    <label className="text-xs sm:text-sm font-medium text-foreground block mb-1.5 sm:mb-2">
+                      Currency
+                    </label>
+                    <select
+                      value={businessData.currency}
+                      onChange={(e) =>
+                        setBusinessData({
+                          ...businessData,
+                          currency: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <option value="USD">USD ($)</option>
+                      <option value="EUR">EUR (€)</option>
+                      <option value="GBP">GBP (£)</option>
+                      <option value="KES">KES (Ksh)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs sm:text-sm font-medium text-foreground block mb-1.5 sm:mb-2">
+                      Tax Rate (%)
+                    </label>
+                    <input
+                      type="number"
+                      value={businessData.taxRate}
+                      onChange={(e) =>
+                        setBusinessData({
+                          ...businessData,
+                          taxRate: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="8.5"
+                      step="0.1"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2 sm:pt-4">
+                  <Button
+                    onClick={handleSaveBusiness}
+                    className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-sm sm:text-base py-2 sm:py-2.5"
+                  >
+                    <Save className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                    Save Business Settings
+                  </Button>
+                </div>
+              </TabsContent>
+
+              {/* Notifications Tab */}
+              <TabsContent
+                value="notifications"
+                className="mt-4 sm:mt-6 space-y-2 sm:space-y-3"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2.5 sm:p-4 border border-border rounded-lg gap-3 sm:gap-0">
+                  <div className="flex-1">
+                    <p className="text-sm sm:text-base font-medium text-foreground">
+                      Email Notifications
+                    </p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Receive updates via email
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={notificationData.emailNotifications}
+                    onChange={(e) =>
+                      setNotificationData({
+                        ...notificationData,
+                        emailNotifications: e.target.checked,
+                      })
+                    }
+                    className="w-5 h-5 rounded border-border shrink-0"
+                  />
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2.5 sm:p-4 border border-border rounded-lg gap-3 sm:gap-0">
+                  <div className="flex-1">
+                    <p className="text-sm sm:text-base font-medium text-foreground">
+                      SMS Notifications
+                    </p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Receive updates via SMS
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={notificationData.smsNotifications}
+                    onChange={(e) =>
+                      setNotificationData({
+                        ...notificationData,
+                        smsNotifications: e.target.checked,
+                      })
+                    }
+                    className="w-5 h-5 rounded border-border shrink-0"
+                  />
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2.5 sm:p-4 border border-border rounded-lg gap-3 sm:gap-0">
+                  <div className="flex-1">
+                    <p className="text-sm sm:text-base font-medium text-foreground">
+                      Order Updates
+                    </p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Get notified about order status changes
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={notificationData.orderUpdates}
+                    onChange={(e) =>
+                      setNotificationData({
+                        ...notificationData,
+                        orderUpdates: e.target.checked,
+                      })
+                    }
+                    className="w-5 h-5 rounded border-border shrink-0"
+                  />
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2.5 sm:p-4 border border-border rounded-lg gap-3 sm:gap-0">
+                  <div className="flex-1">
+                    <p className="text-sm sm:text-base font-medium text-foreground">
+                      Payment Alerts
+                    </p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Get notified about payment transactions
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={notificationData.paymentAlerts}
+                    onChange={(e) =>
+                      setNotificationData({
+                        ...notificationData,
+                        paymentAlerts: e.target.checked,
+                      })
+                    }
+                    className="w-5 h-5 rounded border-border shrink-0"
+                  />
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2.5 sm:p-4 border border-border rounded-lg gap-3 sm:gap-0">
+                  <div className="flex-1">
+                    <p className="text-sm sm:text-base font-medium text-foreground">
+                      Staff Alerts
+                    </p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Get notified about staff activities
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={notificationData.staffAlerts}
+                    onChange={(e) =>
+                      setNotificationData({
+                        ...notificationData,
+                        staffAlerts: e.target.checked,
+                      })
+                    }
+                    className="w-5 h-5 rounded border-border shrink-0"
+                  />
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2.5 sm:p-4 border border-border rounded-lg gap-3 sm:gap-0">
+                  <div className="flex-1">
+                    <p className="text-sm sm:text-base font-medium text-foreground">
+                      Daily Report
+                    </p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Receive daily business summary
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={notificationData.dailyReport}
+                    onChange={(e) =>
+                      setNotificationData({
+                        ...notificationData,
+                        dailyReport: e.target.checked,
+                      })
+                    }
+                    className="w-5 h-5 rounded border-border shrink-0"
+                  />
+                </div>
+
+                <div className="pt-2 sm:pt-4">
+                  <Button
+                    onClick={handleSaveNotifications}
+                    className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-sm sm:text-base py-2 sm:py-2.5"
+                  >
+                    <Save className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                    Save Notification Settings
+                  </Button>
+                </div>
+              </TabsContent>
+
+              {/* Security Tab */}
+              <TabsContent
+                value="security"
+                className="mt-4 sm:mt-6 space-y-3 sm:space-y-4"
+              >
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5 sm:p-4 mb-2 sm:mb-4">
+                  <p className="text-xs sm:text-sm text-blue-700">
+                    Keep your account secure by using a strong password. Change
+                    your password regularly.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-xs sm:text-sm font-medium text-foreground block mb-1.5 sm:mb-2">
+                    Current Password
+                  </label>
+                  <input
+                    type="password"
+                    value={securityData.currentPassword}
+                    onChange={(e) =>
+                      setSecurityData({
+                        ...securityData,
+                        currentPassword: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Enter your current password"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs sm:text-sm font-medium text-foreground block mb-1.5 sm:mb-2">
+                    New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={securityData.newPassword}
+                    onChange={(e) =>
+                      setSecurityData({
+                        ...securityData,
+                        newPassword: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Enter your new password"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs sm:text-sm font-medium text-foreground block mb-1.5 sm:mb-2">
+                    Confirm Password
+                  </label>
+                  <input
+                    type="password"
+                    value={securityData.confirmPassword}
+                    onChange={(e) =>
+                      setSecurityData({
+                        ...securityData,
+                        confirmPassword: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Confirm your new password"
+                  />
+                </div>
+
+                <div className="pt-2 sm:pt-4">
+                  <Button
+                    onClick={handleChangePassword}
+                    className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-sm sm:text-base py-2 sm:py-2.5"
+                  >
+                    <Lock className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                    Change Password
+                  </Button>
+                </div>
+
+                <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-border">
+                  <h3 className="text-sm sm:text-base font-semibold text-foreground mb-3 sm:mb-4">
+                    Active Sessions
+                  </h3>
+                  <div className="space-y-2 sm:space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2.5 sm:p-4 border border-border rounded-lg gap-2 sm:gap-0">
+                      <div className="flex-1">
+                        <p className="text-sm sm:text-base font-medium text-foreground">
+                          Current Session
+                        </p>
+                        <p className="text-xs sm:text-sm text-muted-foreground">
+                          Chrome on Windows
+                        </p>
+                      </div>
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded w-fit">
+                        Active
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* Roles & Permissions Tab */}
+              {/* <TabsContent
               value="roles"
               className="mt-4 sm:mt-6 space-y-3 sm:space-y-4"
             >
@@ -918,75 +1063,111 @@ export default function SettingsPage() {
                   </TabsContent>
                 ))}
               </Tabs>
-            </TabsContent>
-
-            {/* Pricing Tab */}
-            <TabsContent value="pricing" className="mt-4 sm:mt-6 space-y-4">
-              <div>
-                <h2 className="text-lg sm:text-xl font-semibold text-foreground">
-                  Pricing Structure
-                </h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Our system calculates charges based on whether an item is
-                  priced per piece or by weight (per Kg).
-                </p>
-              </div>
-
-              <LaundryCalculator
-                isEditable={true}
-                pricingData={pricingData}
-                onPriceChange={handlePriceChange}
-              />
-
-              <div className="pt-2 sm:pt-4">
-                <Button
-                  onClick={handleSavePricing}
-                  className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-sm sm:text-base py-2 sm:py-2.5"
-                >
-                  <Save className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                  Save Pricing
-                </Button>
-              </div>
-            </TabsContent>
-
-            {/* Appearance Tab */}
-            <TabsContent value="appearance" className="mt-4 sm:mt-6 space-y-4">
-              <div>
-                <h2 className="text-lg sm:text-xl font-semibold text-foreground">
-                  Appearance
-                </h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Customize the look and feel of the application.
-                </p>
-              </div>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Theme</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-2">
-                    <Label htmlFor="theme">Select Theme</Label>
-                    {mounted ? (
-                      <select
-                        id="theme"
-                        value={theme}
-                        onChange={(e) => setTheme(e.target.value)}
-                        className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            </TabsContent> */}
+              <TabsContent
+                value="roles" // This assumes this component is inside another <Tabs>
+                className="mt-4 sm:mt-6 space-y-3 sm:space-y-4"
+              >
+                <Tabs defaultValue={defaultRole} className="w-full">
+                  <TabsList className={`grid w-full grid-cols-${roles.length}`}>
+                    {/* Create tabs dynamically from roles */}
+                    {roles.map((role) => (
+                      <TabsTrigger
+                        key={role.id}
+                        value={role.name.toLowerCase()} // e.g., "admin"
                       >
-                        <option value="system">System</option>
-                        <option value="dark">Dark</option>
-                        <option value="light">Light</option>
-                      </select>
-                    ) : (
-                      <div className="w-full h-10 rounded-lg bg-muted animate-pulse" />
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </Card>
-      </div>
-    </DashboardLayout>
+                        {role.name} {/* e.g., "Admin" */}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+
+                  {/* Create tab content dynamically from roles */}
+                  {roles.map((role) => (
+                    <TabsContent
+                      key={role.id}
+                      value={role.name.toLowerCase()}
+                      className="mt-6"
+                    >
+                      {/* Render the separate form component for this role.
+              This isolates state and submission logic for each tab.
+            */}
+                      <RolePermissionForm
+                        role={role}
+                        groupedPermissions={groupedPermissions}
+                      />
+                    </TabsContent>
+                  ))}
+                </Tabs>
+              </TabsContent>
+
+              {/* Pricing Tab */}
+              <TabsContent value="pricing" className="mt-4 sm:mt-6 space-y-4">
+                <div>
+                  <h2 className="text-lg sm:text-xl font-semibold text-foreground">
+                    Pricing Structure
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Our system calculates charges based on whether an item is
+                    priced per piece or by weight (per Kg).
+                  </p>
+                </div>
+
+                <LaundryCalculator
+                  isEditable={true}
+                  pricingData={pricingData}
+                  onPriceChange={handlePriceChange}
+                />
+
+                <div className="pt-2 sm:pt-4">
+                  <Button
+                    onClick={handleSavePricing}
+                    className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-sm sm:text-base py-2 sm:py-2.5"
+                  >
+                    <Save className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                    Save Pricing
+                  </Button>
+                </div>
+              </TabsContent>
+
+              {/* Appearance Tab */}
+              <TabsContent value="appearance" className="mt-4 sm:mt-6 space-y-4">
+                <div>
+                  <h2 className="text-lg sm:text-xl font-semibold text-foreground">
+                    Appearance
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Customize the look and feel of the application.
+                  </p>
+                </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Theme</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-2">
+                      <Label htmlFor="theme">Select Theme</Label>
+                      {mounted ? (
+                        <select
+                          id="theme"
+                          value={theme}
+                          onChange={(e) => setTheme(e.target.value)}
+                          className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                        >
+                          <option value="system">System</option>
+                          <option value="dark">Dark</option>
+                          <option value="light">Light</option>
+                        </select>
+                      ) : (
+                        <div className="w-full h-10 rounded-lg bg-muted animate-pulse" />
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </Card>
+        </div>
+      </DashboardLayout>
+    </AppLayout>
   );
 }

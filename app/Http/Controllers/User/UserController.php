@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
-class UserConroller extends Controller
+class UserController extends Controller
 {
     public function index()
     {

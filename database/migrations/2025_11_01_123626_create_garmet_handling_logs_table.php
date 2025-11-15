@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('order_item_id')->constrained()->cascadeOnDelete();
             $table->foreignId('handled_by_user_id')->constrained('users')->cascadeOnDelete();
             $table->string('stage')->index();
+            $table->string('description')->nullable();
             $table->timestamp('scanned_at')->useCurrent();
             $table->timestamps();
         });

@@ -11,7 +11,7 @@ class GarmetHandlingLog extends Model
     /** @use HasFactory<\Database\Factories\GarmetHandlingLogFactory> */
     use HasFactory, Auditable;
 
-    protected $fillable = ['order_item_id', 'handled_by_user_id', 'stage', 'scanned_at'];
+    protected $fillable = ['order_item_id', 'description', 'handled_by_user_id', 'stage', 'scanned_at'];
 
     protected $casts = [
         'scanned_at' => 'datetime',

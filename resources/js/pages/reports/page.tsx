@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DateRangePicker } from "@/components/ui/date-range-picker"; 
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 import {
   FileText,
   Activity,
@@ -23,6 +23,7 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { useState } from "react";
 import type { DateRange } from "react-day-picker";
+import { AppLayout } from "@/layouts/AppLayout"
 
 function ReportGenerator({
   onGenerateReport,
@@ -162,81 +163,83 @@ export default function ReportsPage() {
   };
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Reports & Logs</h1>
-          <p className="text-muted-foreground mt-1">
-            Generate custom reports and track system activity.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column: Report Generator and Notifications */}
-          <div className="lg:col-span-1 space-y-6">
-            <ReportGenerator onGenerateReport={handleGenerateReport} />
-            <BulkUploadCard />
-
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold text-foreground flex items-center mb-4">
-                <Bell className="w-5 h-5 mr-2" />
-                System Notifications
-              </h3>
-              <div className="space-y-3">
-                {systemNotificationsData.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className={`p-3 border rounded-lg text-sm ${getNotificationStyles(
-                      notification.type
-                    )}`}
-                  >
-                    <p className="font-medium">{notification.message}</p>
-                    <p className="text-xs opacity-80 mt-1">
-                      {formatDistanceToNow(notification.timestamp, {
-                        addSuffix: true,
-                      })}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </Card>
+    <AppLayout>
+      <DashboardLayout>
+        <div className="space-y-6">
+          {/* Header */}
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Reports & Logs</h1>
+            <p className="text-muted-foreground mt-1">
+              Generate custom reports and track system activity.
+            </p>
           </div>
 
-          {/* Right Column: Audit Trail */}
-          <div className="lg:col-span-2">
-            <Card className="p-6 h-full">
-              <h3 className="text-lg font-semibold text-foreground flex items-center mb-4">
-                <Activity className="w-5 h-5 mr-2" />
-                Audit Trail / Activity Log
-              </h3>
-              <div className="space-y-4 max-h-[calc(100vh-20rem)] overflow-y-auto pr-2">
-                {auditTrailData.map((log) => (
-                  <div key={log.id} className="flex items-start gap-3">
-                    <div className="bg-secondary p-2 rounded-full mt-1">
-                      <log.icon className="w-4 h-4 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-foreground">
-                        <span className="font-semibold">{log.user}</span>{" "}
-                        {log.action.includes(log.user)
-                          ? ""
-                          : log.action.charAt(0).toLowerCase() +
-                            log.action.slice(1)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatDistanceToNow(log.timestamp, {
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left Column: Report Generator and Notifications */}
+            <div className="lg:col-span-1 space-y-6">
+              <ReportGenerator onGenerateReport={handleGenerateReport} />
+              <BulkUploadCard />
+
+              <Card className="p-6">
+                <h3 className="text-lg font-semibold text-foreground flex items-center mb-4">
+                  <Bell className="w-5 h-5 mr-2" />
+                  System Notifications
+                </h3>
+                <div className="space-y-3">
+                  {systemNotificationsData.map((notification) => (
+                    <div
+                      key={notification.id}
+                      className={`p-3 border rounded-lg text-sm ${getNotificationStyles(
+                        notification.type
+                      )}`}
+                    >
+                      <p className="font-medium">{notification.message}</p>
+                      <p className="text-xs opacity-80 mt-1">
+                        {formatDistanceToNow(notification.timestamp, {
                           addSuffix: true,
                         })}
                       </p>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
+                  ))}
+                </div>
+              </Card>
+            </div>
+
+            {/* Right Column: Audit Trail */}
+            <div className="lg:col-span-2">
+              <Card className="p-6 h-full">
+                <h3 className="text-lg font-semibold text-foreground flex items-center mb-4">
+                  <Activity className="w-5 h-5 mr-2" />
+                  Audit Trail / Activity Log
+                </h3>
+                <div className="space-y-4 max-h-[calc(100vh-20rem)] overflow-y-auto pr-2">
+                  {auditTrailData.map((log) => (
+                    <div key={log.id} className="flex items-start gap-3">
+                      <div className="bg-secondary p-2 rounded-full mt-1">
+                        <log.icon className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-foreground">
+                          <span className="font-semibold">{log.user}</span>{" "}
+                          {log.action.includes(log.user)
+                            ? ""
+                            : log.action.charAt(0).toLowerCase() +
+                            log.action.slice(1)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatDistanceToNow(log.timestamp, {
+                            addSuffix: true,
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
           </div>
         </div>
-      </div>
-    </DashboardLayout>
+      </DashboardLayout>
+    </AppLayout>
   );
 }

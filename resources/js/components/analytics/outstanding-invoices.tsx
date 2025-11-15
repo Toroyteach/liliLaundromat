@@ -42,10 +42,10 @@ export function OutstandingInvoices({ invoices }: OutstandingInvoicesProps) {
                   {invoice.customerName}
                 </td>
                 <td className="py-3 px-4 text-right font-semibold text-foreground">
-                  KES {invoice.amount.toLocaleString()}
+                  KES {invoice.amount}
                 </td>
                 <td className="py-3 px-4 text-muted-foreground">
-                  {invoice.dueDate.toLocaleDateString()}
+                  {invoice.dueDate}
                 </td>
               </tr>
             ))}
