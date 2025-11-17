@@ -81,7 +81,4 @@ EXPOSE 8099
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-COPY queue-entrypoint.sh /usr/local/bin/queue-entrypoint.sh
-RUN chmod +x /usr/local/bin/queue-entrypoint.sh
-
 ENTRYPOINT ["docker-entrypoint.sh"]
