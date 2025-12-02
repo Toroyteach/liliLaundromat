@@ -52,8 +52,8 @@ export default function AnimatedLanding() {
                 onClick={handleLaundroMartClick}
               >
                 <div className="w-20 h-20 md:w-24 md:h-24 bg-linear-to-br from-teal-500 to-cyan-600 rounded-lg shadow-xl flex flex-col items-center justify-center hover:shadow-2xl transition-shadow">
-                  <Droplets className="w-8 h-8 md:w-10 md:h-10 text-white mb-1" />
-                  <Wind className="w-6 h-6 md:w-8 md:h-8 text-white" />
+                  <Droplets className="w-8 h-8 md:w-10 md:h-10 text-teal-700 mb-1" />
+                  <Wind className="w-6 h-6 md:w-8 md:h-8 text-teal-700" />
                 </div>
                 <p className="text-center text-xs md:text-sm font-semibold text-teal-700 mt-2">LaundroMart</p>
               </div>
@@ -98,7 +98,7 @@ export default function AnimatedLanding() {
       </div>
 
       {/* Styles */}
-      <style jsx>{`
+      <style>{`
         @keyframes slide-right {
           0% {
             transform: translateX(-100px);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { router } from '@inertiajs/react'
-import { usePage } from '@inertiajs/react'
+import { router } from "@inertiajs/react";
+import { usePage } from "@inertiajs/react";
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { OrdersList } from "@/components/orders/orders-list";
 import { Button } from "@/components/ui/button";
@@ -8,109 +8,146 @@ import { Plus } from "lucide-react";
 import type { Order, OrderStatus, Customer } from "@/lib/types";
 import { useAuth } from "@/lib/auth-context";
 import React from "react";
-import { AppLayout } from "@/layouts/AppLayout"
+import { AppLayout } from "@/layouts/AppLayout";
 
 function OrdersPageContent() {
-  const { url } = usePage()
-  const searchParams = new URLSearchParams(url.split('?')[1] || '')
-  const { user } = useAuth();
+    const { url } = usePage();
+    const searchParams = new URLSearchParams(url.split("?")[1] || "");
+    const { user } = useAuth();
 
-  const canCreateOrder = user && user.role !== "customer";
-  useEffect(() => {
-    if (searchParams.get("create") === "true") {
-      setCreateModalOpen(true);
-    }
-  }, [searchParams]);
+    const canCreateOrder = user && user.role !== "customer";
+    useEffect(() => {
+        if (searchParams.get("create") === "true") {
+            setCreateModalOpen(true);
+        }
+    }, [searchParams]);
 
-  // Mock data for customers and orders
-  // ⬅ Pull initial data from backend
-  const initialOrders = (usePage().props.orders ?? []) as Order[];
-  const initialCustomers = (usePage().props.customers ?? []) as Customer[];
+    // Mock data for customers and orders
+    // ⬅ Pull initial data from backend
+    const initialOrders = (usePage().props.orders ?? []) as Order[];
+    const initialCustomers = (usePage().props.customers ?? []) as Customer[];
 
-  // ⬅ Local state so UI can update without reloading
-  const [orders, setOrders] = useState<Order[]>(initialOrders);
-  const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
+    // ⬅ Local state so UI can update without reloading
+    const [orders, setOrders] = useState<Order[]>(initialOrders);
+    const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
+    const [currentPage, setCurrentPage] = useState(1);
 
-  const handleCreateOrder = (newOrder: Order) => {
-    setOrders((prev) => [newOrder, ...prev]);
-    // Check if it's a new customer and add them to the list
-    const customerExists = customers.some((c) => c.id === newOrder.customerId);
-    if (!customerExists) {
-      setCustomers((prev) => [
-        ...prev,
-        {
-          id: newOrder.customerId,
-          name: newOrder.customerName,
-          phone: newOrder.customerPhone,
-          email: (newOrder as any).customerEmail || "",
-          createdAt: new Date(),
-          totalOrders: 1,
-          totalSpent: newOrder.totalPrice,
-          // Add other required properties for Customer if they exist in your type definition
-          // For example, if 'address' is required: address: newOrder.customerAddress || '',
-        },
-      ]);
-    }
-    setCreateModalOpen(false);
-  };
-
-  const handleUpdateStatus = (orderId: string, newStatus: OrderStatus) => {
-    setOrders(
-      orders.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
+    const itemsPerPage = 10;
+    const paginatedOrders = orders.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage,
     );
-  };
 
-  const handlePaymentComplete = (orderId: string) => {
-    setOrders(
-      orders.map((o) =>
-        o.id === orderId
-          ? { ...o, paymentStatus: "completed", status: "completed" }
-          : o
-      )
+    const totalPages = Math.ceil(orders.length / itemsPerPage);
+
+    const handleCreateOrder = (newOrder: Order) => {
+        setOrders((prev) => [newOrder, ...prev]);
+        // Check if it's a new customer and add them to the list
+        const customerExists = customers.some(
+            (c) => c.id === newOrder.customerId,
+        );
+        if (!customerExists) {
+            setCustomers((prev) => [
+                ...prev,
+                {
+                    id: newOrder.customerId,
+                    name: newOrder.customerName,
+                    phone: newOrder.customerPhone,
+                    email: (newOrder as any).customerEmail || "",
+                    createdAt: new Date(),
+                    totalOrders: 1,
+                    totalSpent: newOrder.totalPrice,
+                    // Add other required properties for Customer if they exist in your type definition
+                    // For example, if 'address' is required: address: newOrder.customerAddress || '',
+                },
+            ]);
+        }
+        setCreateModalOpen(false);
+    };
+
+    const handleUpdateStatus = (orderId: string, newStatus: OrderStatus) => {
+        setOrders(
+            orders.map((o) =>
+                o.id === orderId ? { ...o, status: newStatus } : o,
+            ),
+        );
+    };
+
+    const handlePaymentComplete = (orderId: string) => {
+        setOrders(
+            orders.map((o) =>
+                o.id === orderId
+                    ? { ...o, paymentStatus: "completed", status: "completed" }
+                    : o,
+            ),
+        );
+    };
+
+    return (
+        <DashboardLayout>
+            <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold text-foreground">
+                            Orders
+                        </h1>
+                        <p className="text-muted-foreground mt-1">
+                            Manage all customer orders.
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {/* {canCreateOrder && ( */}
+                        <Button onClick={() => router.visit("/orders/create")}>
+                            <Plus className="w-4 h-4 mr-2" />
+                            Create New Order
+                        </Button>
+                        {/* )} */}
+                    </div>
+                </div>
+
+                <div className="flex justify-end items-center gap-2 mb-4">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                            setCurrentPage((p) => Math.max(1, p - 1))
+                        }
+                        disabled={currentPage === 1}
+                    >
+                        Previous
+                    </Button>
+                    <span className="text-sm text-muted-foreground">
+                        Page {currentPage} of {totalPages}
+                    </span>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage((p) => p + 1)}
+                        disabled={currentPage * itemsPerPage >= orders.length}
+                    >
+                        Next
+                    </Button>
+                </div>
+                <OrdersList
+                    orders={paginatedOrders}
+                    onUpdateStatus={handleUpdateStatus}
+                    onPaymentComplete={handlePaymentComplete}
+                />
+            </div>
+        </DashboardLayout>
     );
-  };
-
-  return (
-      <DashboardLayout>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">Orders</h1>
-              <p className="text-muted-foreground mt-1">
-                Manage all customer orders.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              {/* {canCreateOrder && ( */}
-              <Button onClick={() => router.visit("/orders/create")}>
-                <Plus className="w-4 h-4 mr-2" />
-                Create New Order
-              </Button>
-              {/* )} */}
-            </div>
-          </div>
-
-          <OrdersList
-            orders={orders}
-            onUpdateStatus={handleUpdateStatus}
-            onPaymentComplete={handlePaymentComplete}
-          />
-        </div>
-      </DashboardLayout>
-  );
 }
 
 export default function OrdersPage() {
-  return (
-    // Suspense boundary is required for useSearchParams
-    <AppLayout>
-      <React.Suspense fallback={<div>Loading...</div>}>
-        <OrdersPageContent />
-      </React.Suspense>
-    </AppLayout>
-  );
+    return (
+        // Suspense boundary is required for useSearchParams
+        <AppLayout>
+            <React.Suspense fallback={<div>Loading...</div>}>
+                <OrdersPageContent />
+            </React.Suspense>
+        </AppLayout>
+    );
 }
 function setCreateModalOpen(arg0: boolean) {
-  throw new Error("Function not implemented.");
+    throw new Error("Function not implemented.");
 }
-
