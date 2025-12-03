@@ -106,6 +106,102 @@ export default function SettingsPage() {
                 unit: "bag",
             },
         },
+<<<<<<< HEAD
+=======
+      }));
+    },
+    []
+  );
+
+  // Profile settings state
+  const [profileData, setProfileData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    avatar: "",
+    gender: "male",
+  });
+
+  // Business settings state
+  const [businessData, setBusinessData] = useState({
+    businessName: "WoshLaundromant",
+    businessPhone: "+1 (555) 123-4567",
+    businessEmail: "info@laundrohub.com",
+    address: "123 Main Street, City, State 12345",
+    operatingHours: "Mon-Sun: 6:00 AM - 10:00 PM",
+    currency: "USD",
+    taxRate: "8.5",
+  });
+
+  // Notification settings state
+  const [notificationData, setNotificationData] = useState({
+    emailNotifications: true,
+    smsNotifications: true,
+    orderUpdates: true,
+    paymentAlerts: true,
+    staffAlerts: true,
+    dailyReport: true,
+  });
+
+  // Security settings state
+  const [securityData, setSecurityData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+
+  // useEffect only runs on the client, so now we can safely show the UI
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const handleSaveProfile = () => {
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 2000);
+  };
+
+  const handleSaveBusiness = () => {
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 2000);
+  };
+
+  const handleSaveNotifications = () => {
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 2000);
+  };
+
+  const handleSavePricing = () => {
+    fetch("/api/pricing", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(pricingData),
+    })
+      .then((response) => {
+        if (response.ok) {
+          setSaveSuccess(true);
+          setTimeout(() => setSaveSuccess(false), 2000);
+        } else {
+          alert("Failed to save pricing. Please try again.");
+        }
+      })
+      .catch((error) => {
+        console.error("Error saving pricing:", error);
+      });
+  };
+
+  const handleChangePassword = () => {
+    if (securityData.newPassword !== securityData.confirmPassword) {
+      alert("Passwords do not match");
+      return;
+    }
+    setSaveSuccess(true);
+    setSecurityData({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+>>>>>>> 950c967 (ADD)
     });
 
     const handlePriceChange = useCallback(

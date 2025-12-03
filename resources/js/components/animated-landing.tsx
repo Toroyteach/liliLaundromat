@@ -67,7 +67,7 @@ export function AnimatedLanding() {å
           <div className="flex flex-col justify-center space-y-6">
             <div>
               <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
-                Welcome to <span className="text-teal-600">LaundroHub</span>
+                Welcome to <span className="text-teal-600">WoshLaundromart</span>
               </h1>
               <p className="text-lg md:text-xl text-gray-600 mb-6">
                 Manage your laundromat operations with ease. Track orders, process payments, and keep your business

@@ -4,7 +4,7 @@ services:
     platform: linux/x86_64
     ports:
       - "33020:3306"
-    container_name: mysql-eazydashboard
+    container_name: mysql-lillian-db
     restart: unless-stopped
     environment:
       MYSQL_DATABASE: woshlaundromat_db
