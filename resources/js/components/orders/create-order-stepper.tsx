@@ -363,9 +363,9 @@ export function CreateOrderStepper({
                 }
               />
             </div>
-            {/* <GarmentList
+            <GarmentList
               onQuantityChange={handleGarmentQuantityChange}
-            /> */}
+            />
           </div>
         );
       case 3: // Review

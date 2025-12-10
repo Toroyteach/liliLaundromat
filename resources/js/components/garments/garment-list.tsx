@@ -30,7 +30,7 @@ export interface GarmentListProps {
   /**
    * Array of garment items to display
    */
-  items: Garment[];
+  items?: Garment[];
   /**
    * Callback when quantity changes for an item
    */

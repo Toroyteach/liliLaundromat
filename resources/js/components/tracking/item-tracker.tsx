@@ -74,13 +74,12 @@ export function ItemTracker({ item, order, customer }: ItemTrackerProps) {
                   {/* Timeline Dot */}
                   <div className="relative">
                     <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        isCompleted
-                          ? "bg-green-500 text-white"
-                          : isCurrent
+                      className={`w-10 h-10 rounded-full flex items-center justify-center ${isCompleted
+                        ? "bg-green-500 text-white"
+                        : isCurrent
                           ? "bg-teal-500 text-white ring-4 ring-teal-200"
                           : "bg-gray-200 text-gray-400"
-                      }`}
+                        }`}
                     >
                       {isCompleted ? (
                         <CheckCircle2 className="w-5 h-5" />
@@ -95,13 +94,12 @@ export function ItemTracker({ item, order, customer }: ItemTrackerProps) {
                   {/* Stage Info */}
                   <div className="text-center mt-2">
                     <h4
-                      className={`font-semibold text-sm ${
-                        isCompleted
-                          ? "text-green-600"
-                          : isCurrent
+                      className={`font-semibold text-sm ${isCompleted
+                        ? "text-green-600"
+                        : isCurrent
                           ? "text-teal-600"
                           : "text-gray-400"
-                      }`}
+                        }`}
                     >
                       {stage.label}
                     </h4>
@@ -119,9 +117,8 @@ export function ItemTracker({ item, order, customer }: ItemTrackerProps) {
                 {/* Connector */}
                 {index < trackingStages.length - 1 && (
                   <div
-                    className={`flex-1 h-1 mt-5 ${
-                      isCompleted ? "bg-green-500" : "bg-gray-200"
-                    }`}
+                    className={`flex-1 h-1 mt-5 ${isCompleted ? "bg-green-500" : "bg-gray-200"
+                      }`}
                   />
                 )}
               </>

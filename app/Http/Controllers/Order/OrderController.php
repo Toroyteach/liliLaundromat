@@ -126,7 +126,7 @@ class OrderController extends Controller
                 // latest payment (if any)
                 $latestPayment = $order->payments->sortByDesc('paid_at')->first();
 
-                $items = collect($order->orderItems)->map(function ($it) use ($logs) {
+                $items = collect($order->items)->map(function ($it) use ($logs) {
                     $key = $it->id;
                     $itemLogs = isset($logs[$key]) ? $logs[$key] : collect();
 
