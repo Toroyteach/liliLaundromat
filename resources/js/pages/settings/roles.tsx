@@ -20,7 +20,7 @@ interface Role {
   permissions: Permission[]; // Permissions this role *currently* has
 }
 
-interface PageProps {
+export interface PageProps {
   roles: Role[]; // ALL roles
   allPermissions: Permission[]; // ALL available permissions
 }
@@ -36,7 +36,7 @@ const iconMap: { [key: string]: React.ElementType } = {
 };
 
 // --- Helper to group permissions ---
-const groupPermissions = (permissions: Permission[]) => {
+export const groupPermissions = (permissions: Permission[]) => {
   return permissions.reduce((acc, permission) => {
     const [model, ...actionParts] = permission.name.split('.');
     if (!acc[model]) {
@@ -49,7 +49,7 @@ const groupPermissions = (permissions: Permission[]) => {
 
 // --- Sub-Component: Form for a *Single* Role ---
 // This manages the state and submission for one tab
-function RolePermissionForm({
+export function RolePermissionForm({
   role,
   groupedPermissions,
 }: {
