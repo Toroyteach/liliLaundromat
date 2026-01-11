@@ -112,12 +112,11 @@ export default function TrackingPage() {
                                                 onClick={() =>
                                                     setSelectedOrder(order)
                                                 }
-                                                className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                                                    selectedOrder?.id ===
+                                                className={`w-full text-left p-3 rounded-lg border transition-colors ${selectedOrder?.id ===
                                                     order.id
-                                                        ? "bg-teal-50 border-teal-500"
-                                                        : "border-border hover:bg-accent"
-                                                }`}
+                                                    ? "bg-teal-50 border-teal-500"
+                                                    : "border-border hover:bg-accent"
+                                                    }`}
                                             >
                                                 <div className="font-medium text-sm">
                                                     {order.customerName}
@@ -143,39 +142,15 @@ export default function TrackingPage() {
                         <div className="lg:col-span-2">
                             {selectedOrder ? (
                                 <div className="space-y-4">
-                                    <Card className="p-4 bg-teal-50 border-teal-200">
-                                        <h3 className="font-semibold text-foreground mb-2">
-                                            Order Details
-                                        </h3>
+                                    <Card className="p-4 bg-teal-50 border border-teal-200">
+                                        <h3 className="font-semibold mb-2">Order Details</h3>
+
                                         <div className="grid grid-cols-2 gap-4 text-sm">
+                                            <Info label="Order ID" value={selectedOrder.id} />
+                                            <Info label="Barcode" value={selectedOrder.barcode} />
+                                            <Info label="Customer" value={selectedOrder.customerName} />
                                             <div>
-                                                <p className="text-muted-foreground">
-                                                    Order ID
-                                                </p>
-                                                <p className="font-medium">
-                                                    {selectedOrder.id}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <p className="text-muted-foreground">
-                                                    Barcode
-                                                </p>
-                                                <p className="font-medium text-xs">
-                                                    {selectedOrder.barcode}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <p className="text-muted-foreground">
-                                                    Customer
-                                                </p>
-                                                <p className="font-medium">
-                                                    {selectedOrder.customerName}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <p className="text-muted-foreground">
-                                                    Status
-                                                </p>
+                                                <p className="text-muted-foreground">Status</p>
                                                 <Badge className="bg-teal-600 text-white capitalize">
                                                     {selectedOrder.status}
                                                 </Badge>
@@ -183,13 +158,10 @@ export default function TrackingPage() {
                                         </div>
                                     </Card>
 
-                                    {/* Items Tracking */}
+                                    {/* Items */}
                                     <div className="space-y-4">
                                         {selectedOrder.items.map((item) => (
-                                            <ItemTracker
-                                                key={item.id}
-                                                item={item}
-                                            />
+                                            <ItemTracker key={item.id} item={item} />
                                         ))}
                                     </div>
                                 </div>
@@ -208,3 +180,10 @@ export default function TrackingPage() {
         </AppLayout>
     );
 }
+
+const Info = ({ label, value }: { label: string; value: React.ReactNode }) => (
+    <div>
+        <p className="text-muted-foreground">{label}</p>
+        <p className="font-medium">{value}</p>
+    </div>
+)

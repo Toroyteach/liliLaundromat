@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +35,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { GarmentList, DEFAULT_GARMENTS } from '@/components/garments/garment-list';
+import { router, usePage } from "@inertiajs/react";
+import toast from "react-hot-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import axios from "axios";
 
 interface CreateOrderStepperProps {
   isOpen: boolean;
@@ -52,6 +56,20 @@ const steps = [
   { id: 5, name: "Finalization", icon: Package },
 ];
 
+type GarmentMeta = {
+  notes?: string;
+};
+
+interface SharedProps {
+  result?: {
+    id: number;
+    original: string;
+    timestamp: string;
+    status: string;
+  };
+  errors: Record<string, string>;
+}
+
 export function CreateOrderStepper({
   isOpen,
   onClose,
@@ -59,17 +77,19 @@ export function CreateOrderStepper({
   onSaveDraft,
   customers,
 }: CreateOrderStepperProps) {
+  const { result } = usePage<any>().props as SharedProps;
+  const { auth, flash } = usePage().props as any;
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Step 1: Customer
-  const [customerMode, setCustomerMode] = useState<"search" | "create">(
-    "search"
-  );
+  const [showDrafts, setShowDrafts] = useState(false);
+  const [drafts, setDrafts] = useState<any[]>([]);
+
+  const [orderDraft, setOrderDraft] = useState<Partial<Order>>({});
+  const [customerMode, setCustomerMode] = useState<"search" | "create">("search");
   const [customerSearch, setCustomerSearch] = useState("");
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
-    null
-  );
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+
   const [newCustomer, setNewCustomer] = useState({
     name: "",
     phone: "",
@@ -77,29 +97,154 @@ export function CreateOrderStepper({
     address: "",
   });
 
-  // Step 2: Garment Intake & Pricing
-  const [garmentQuantities, setGarmentQuantities] = useState<{ [key: string]: number; }>({});
+  const loadDrafts = () => {
+    const toastId = toast.loading("Checking for drafts...");
 
-  const [orderDetails, setOrderDetails] = useState({
-    dueDate: "",
-    notes: "",
-    weight: 0,
-  });
+    router.get("/orders/draft", {}, {
+      onSuccess: (page: any) => {
+        const draftData = page.props.draft;
+        const items = draftData?.items ?? [];
 
-  const handleGarmentQuantityChange = (garmentId: string, quantity: number) => {
-    setGarmentQuantities(prev => ({ ...prev, [garmentId]: quantity }))
-  }
+        if (items.length > 0) {
+          // setDrafts([draftData]);
+          setShowDrafts(true);
+          console.log(draftData)
+          console.log(showDrafts)
+          toast.success(`Loaded draft`, { id: toastId });
+        } else {
+          setDrafts([]);
+          toast.error("No drafts found", { id: toastId });
+        }
+      },
+      onError: () => {
+        toast.error("Failed to load drafts", { id: toastId });
+      }
+    });
+  };
+
+  const selectDraft = (draft: Partial<Order>) => {
+    setOrderDraft(draft);
+    toast.success("Draft loaded");
+    setShowDrafts(false);
+  };
+
+  const updateDraft = () => {
+    toast.loading('Saving draft...', { id: 'save-draft' });
+
+    router.post(
+      '/orders/draft/update',
+      {
+        order: orderDraft, // use existing local draft state
+      },
+      {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => {
+          toast.success('Draft saved', { id: 'save-draft' });
+        },
+        onError: () => {
+          toast.error('Failed to save draft', { id: 'save-draft' });
+        },
+      },
+    );
+  };
+
+  const deleteDraft = (key: number) => {
+    toast.loading("Deleting draft...", { id: "delete-draft" });
+
+    router.delete(`/orders/draft/${key}`, {
+      onSuccess: () => {
+        setDrafts((prev) => prev.filter((_, i) => i !== key));
+        toast.success("Draft deleted", { id: "delete-draft" });
+      },
+    });
+  };
+
+  const handleGarmentQuantityChange = (
+    garmentId: string,
+    quantity: number,
+    meta?: GarmentMeta
+  ) => {
+    setOrderDraft((prev): Partial<Order> => {
+      const items = Array.isArray(prev.items) ? [...prev.items] : [];
+      const index = items.findIndex((i) => i.id === garmentId);
+
+      if (quantity === 0) {
+        if (index !== -1) items.splice(index, 1);
+      } else {
+        const unitPrice =
+          DEFAULT_GARMENTS.find((g) => g.id === garmentId)?.basePrice ?? 0;
+
+        const payload: GarmentItem = {
+          id: garmentId,
+          name: garmentId,
+          barcode: items[index]?.barcode ?? "",
+          quantity,
+          unitPrice,
+          totalPrice: unitPrice * quantity,
+          notes: meta?.notes ?? "",
+          serviceType: items[index]?.serviceType ?? "wash",
+          status: items[index]?.status ?? "pending",
+          trackingHistory: items[index]?.trackingHistory ?? [],
+          pricingMode: "per_item",
+          createdAt: items[index]?.createdAt ?? new Date(),
+          orderId: items[index]?.orderId ?? "",
+        };
+
+        if (index !== -1) {
+          items[index] = payload;
+        } else {
+          items.push({
+            ...payload,
+            barcode: "",
+            serviceType: "wash",
+            status: "pending",
+            trackingHistory: [],
+            pricingMode: "per_item",
+            createdAt: new Date(),
+            orderId: "",
+          });
+        }
+      }
+
+      return { ...prev, items };
+    });
+  };
+
+  const searchedCustomers = useMemo(() => {
+    if (!customerSearch || !Array.isArray(customers) || customers.length === 0) {
+      return [];
+    }
+
+    const term = customerSearch.toLowerCase();
+
+    return customers.filter(
+      (c) =>
+        c.phone?.includes(term) ||
+        c.email?.toLowerCase().includes(term) ||
+        c.name.toLowerCase().includes(term)
+    );
+  }, [customerSearch, customers]);
 
   const calculatedItems = useMemo(() => {
-    return DEFAULT_GARMENTS.filter(g => (garmentQuantities[g.id] || 0) > 0).map(g => ({
-      ...g,
-      quantity: garmentQuantities[g.id]
-    }))
-  }, [garmentQuantities])
+    if (!Array.isArray(orderDraft.items)) return [];
+
+    return orderDraft.items.map((item) => ({
+      id: item.id,
+      name: item.name,
+      notes: item.notes,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      totalPrice: item.totalPrice,
+    }));
+  }, [orderDraft.items]);
 
   const calculatedTotal = useMemo(() => {
-    return calculatedItems.reduce((total, item) => total + (item.basePrice * item.quantity), 0)
-  }, [calculatedItems])
+    return calculatedItems.reduce(
+      (sum, item) => sum + item.totalPrice,
+      0
+    );
+  }, [calculatedItems]);
 
   // Step 5: Finalization
   const [finalizationDetails, setFinalizationDetails] = useState({
@@ -111,18 +256,160 @@ export function CreateOrderStepper({
   const [generatedBarcodeImage, setGeneratedBarcodeImage] = useState('');
 
   // Step 5: Payment
+  // Inside your component
+  const [activeOrderId, setActiveOrderId] = useState<number | null>(null);
+  const pollingInterval = useRef<NodeJS.Timeout | null>(null);
   const [paymentDetails, setPaymentDetails] = useState({
     paymentMethod: "cash" as Order["paymentMethod"],
     paymentStatus: "pay-on-delivery" as Order["paymentStatus"],
     transactionId: "",
   });
 
+  // helpers (inside component)
+  const [stkStatus, setStkStatus] = useState<
+    "idle" | "sending" | "pending" | "success" | "failed"
+  >("idle");
+
+  const submitPayment = () => {
+    const payload = {
+      user_id: auth.user.id,
+      total_amount: calculatedTotal,
+      status: paymentDetails.paymentMethod === "mpesa" ? "pending" : "completed",
+      due_date: orderDraft.dueDate ?? null,
+      weight_kg: orderDraft.weight ?? null,
+      customer_id: orderDraft.customerId ?? null,
+      customer_phone: orderDraft.customerPhone ?? null,
+      customer_email: orderDraft.customerEmail ?? null,
+      customer_address: orderDraft.customerAddress ?? null,
+      customer_name: orderDraft.customerName ?? null,
+
+
+      payment_method: paymentDetails.paymentMethod,
+      payment_status:
+        paymentDetails.paymentMethod === "mpesa" ? "pending" : "completed",
+      transaction_id: paymentDetails.transactionId ?? null,
+
+      items: orderDraft.items?.map((item) => ({
+        barcode: item.barcode,
+        name: item.name,
+        quantity: item.quantity,
+        service_type: item.serviceType,
+        pricing_mode: item.pricingMode,
+        unit_price: item.unitPrice,
+        total_price: item.totalPrice,
+        garment_type: item.garmentType ?? null,
+        material: item.material ?? null,
+        color: item.color ?? null,
+        notes: item.notes ?? null,
+        status: item.status,
+      })),
+    };
+
+    setStkStatus("sending");
+
+    toast.loading("Submitting order...", { id: "order" });
+
+    router.post("/orders", payload, {
+      onSuccess: (page: any) => {
+        const orderId = page.props.flash?.order_id;
+        console.log(page.props)
+
+        if (paymentDetails.paymentMethod === "mpesa") {
+          if (orderId) {
+            startPolling(orderId);
+            toast.success("Order recorded successfully. Check payment", { id: "order" });
+          } else {
+            // Fallback: Check if we have an activeOrderId from a previous attempt
+            setStkStatus("failed");
+            toast.error("Order created but payment initiation failed. Please retry.", { id: "order" });
+          }
+        } else {
+          toast.success("Order recorded successfully", { id: "order" });
+        }
+      },
+      onError: (errors) => {
+        toast.error("Failed to submit order", { id: "order" });
+        setStkStatus("failed");
+      },
+    });
+  };
+
+  // Function to stop polling
+  const stopPolling = () => {
+    if (pollingInterval.current) {
+      clearInterval(pollingInterval.current);
+      pollingInterval.current = null;
+    }
+  };
+
+  // Polling Logic
+  const startPolling = (orderId: number) => {
+    setActiveOrderId(orderId);
+    setStkStatus("pending");
+
+    stopPolling(); // Clear existing
+
+    pollingInterval.current = setInterval(async () => {
+      try {
+        const response = await axios.get(`/orders/${orderId}/status`);
+        const { status } = response.data;
+
+        if (status === "completed") {
+          setStkStatus("success");
+          toast.success("Payment confirmed!", { id: "order" });
+          stopPolling();
+        } else if (status === "failed") {
+          setStkStatus("failed");
+          toast.error("Payment failed or cancelled.", { id: "order" });
+          stopPolling();
+        }
+      } catch (error) {
+        console.error("Polling error", error);
+      }
+    }, 3000); // Poll every 3 seconds
+  };
+
+  const handleRetry = async () => {
+    if (!activeOrderId) return;
+    setStkStatus("sending");
+    try {
+      await axios.post(`/orders/${activeOrderId}/retry-payment`);
+      startPolling(activeOrderId);
+      toast.loading("Retry sent. Awaiting confirmation...", { id: "order" });
+    } catch (error) {
+      setStkStatus("failed");
+      toast.error("Retry failed.");
+    }
+  };
+
+  // const submitPayment = () => {
+  //   // ... your existing payload logic ...
+  //   setStkStatus("sending");
+  //   toast.loading("Submitting order...", { id: "order" });
+
+  //   router.post("/orders", payload, {
+  //     onSuccess: (page: any) => {
+  //       const orderId = page.props.flash.order_id;
+  //       if (paymentDetails.paymentMethod === "mpesa" && orderId) {
+  //         startPolling(orderId);
+  //       } else {
+  //         setStkStatus("success");
+  //         toast.success("Order completed successfully", { id: "order" });
+  //       }
+  //     },
+  //     onError: () => {
+  //       setStkStatus("failed");
+  //       toast.error("Submission failed", { id: "order" });
+  //     },
+  //   });
+  // };
+
   // Memoize generated order for the final step
   const generatedOrder = useMemo(() => {
     const customer = selectedCustomer || {
       id: `CUST-${Date.now()}`,
-      name: newCustomer.name,
-      phone: newCustomer.phone,
+      name: orderDraft.customerName,
+      phone: orderDraft.customerPhone,
     };
 
     const orderId = `ORD-${String(Math.floor(Math.random() * 10000)).padStart(
@@ -141,84 +428,25 @@ export function CreateOrderStepper({
     } as any;
   }, [calculatedItems, selectedCustomer, newCustomer]);
 
-  const searchedCustomer = useMemo(
-    () =>
-      customerSearch
-        ? customers.find(
-          (c) =>
-            c.phone === customerSearch ||
-            c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
-            (c.email &&
-              c.email.toLowerCase().includes(customerSearch.toLowerCase()))
-        )
-        : null,
-    [customerSearch, customers]
-  );
+  const handleSelectCustomer = (customer: Customer) => {
+    setSelectedCustomer(customer);
+
+    setOrderDraft({
+      customerId: customer.id ?? null,
+      customerName: customer.name ?? "",
+      customerPhone: customer.phone ?? "",
+      customerEmail: customer.email ?? "",
+      customerAddress: customer.address ?? "",
+    });
+
+    setCustomerMode("create"); // go back to form view
+  };
 
   if (!isOpen) return null;
 
   const handleNext = () =>
     setCurrentStep((prev) => Math.min(prev + 1, steps.length));
   const handleBack = () => setCurrentStep((prev) => Math.max(prev - 1, 1));
-
-  const handleSubmit = async () => {
-    setIsSubmitting(true);
-    const customer = selectedCustomer || {
-      id: `CUST-${Date.now()}`,
-      name: newCustomer.name,
-      phone: newCustomer.phone,
-      email: newCustomer.email,
-      address: newCustomer.address,
-      createdAt: new Date(),
-      totalOrders: 0,
-      totalSpent: 0,
-    };
-
-    const newOrder: Order = {
-      id: generatedOrder.orderId,
-      barcode: generatedOrder.orderBarcode,
-      customerId: customer.id,
-      customerName: customer.name,
-      customerPhone: customer.phone,
-      customerAddress: customer.address,
-      items: calculatedItems.map((item, i): GarmentItem => ({
-        id: generatedOrder.items[i].id,
-        barcode: generateItemBarcode(generatedOrder.items[i].id),
-        name: item.name,
-        quantity: item.quantity,
-        // garmentType: item.type, // map `type` to `garmentType`
-        trackingHistory: [],
-        serviceType: "wash", // set default or choose dynamically
-        status: "pending",   // initial status
-      })),
-      status: "pending",
-      totalPrice: calculatedTotal,
-      paymentMethod: paymentDetails.paymentMethod,
-      weight: orderDetails.weight,
-      paymentStatus: paymentDetails.paymentStatus,
-      notes: orderDetails.notes,
-      dueDate: orderDetails.dueDate
-        ? new Date(orderDetails.dueDate)
-        : undefined,
-      transactionId: paymentDetails.transactionId,
-      createdAt: new Date(),
-      trackingHistory: onSaveDraft
-        ? []
-        : [{ status: "received", timestamp: new Date(), staffName: "Staff" }],
-    };
-
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      onCreate(newOrder);
-      onClose();
-      // Reset state for next time
-    } catch (error) {
-      console.error("Failed to create order:", error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const handleGenerateBarcode = (type: 'order' | 'item') => {
     // This is a mock function. In a real app, you'd use a library to generate a barcode image.
@@ -247,7 +475,35 @@ export function CreateOrderStepper({
               >
                 {customerMode === "search" ? "Add New" : "Search"}
               </Button>
+              <Button variant="secondary" size="sm" onClick={loadDrafts}>
+                Continue Draft
+              </Button>
             </div>
+
+            {/* Draft selector */}
+            {showDrafts && drafts.length > 0 && (
+              <div className="max-h-64 overflow-y-auto space-y-2 border rounded-md p-2">
+                {drafts.map((draft, index) => (
+                  <Card
+                    key={index}
+                    className="p-3 cursor-pointer hover:bg-muted"
+                    onClick={() => selectDraft(draft)}
+                  >
+                    <p className="font-semibold">
+                      {draft.customerName ?? 'Unnamed Customer'}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {draft.items?.length ?? 0} items • KES {draft.totalAmount ?? 0}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {draft.createdAt
+                        ? new Date(draft.createdAt).toLocaleString()
+                        : 'Draft'}
+                    </p>
+                  </Card>
+                ))}
+              </div>
+            )}
 
             {customerMode === "search" ? (
               <div className="space-y-4">
@@ -265,20 +521,24 @@ export function CreateOrderStepper({
                     }}
                   />
                 </div>
-                {customerSearch && searchedCustomer && (
-                  <Card className="p-4 bg-green-50 border-green-200">
-                    <p className="font-semibold">{searchedCustomer.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {searchedCustomer.phone}
-                    </p>
-                    <Button
-                      size="sm"
-                      className="mt-2"
-                      onClick={() => setSelectedCustomer(searchedCustomer)}
-                    >
-                      Confirm Customer
-                    </Button>
-                  </Card>
+                {customerSearch && searchedCustomers.length > 0 && (
+                  <div className="max-h-64 overflow-y-auto space-y-2 border rounded-md p-2">
+                    {searchedCustomers.map((customer) => (
+                      <Card
+                        key={customer.id}
+                        className="p-3 cursor-pointer hover:bg-muted"
+                        onClick={() => handleSelectCustomer(customer)}
+                      >
+                        <p className="font-semibold">{customer.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {customer.phone} • {customer.email}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {customer.address}
+                        </p>
+                      </Card>
+                    ))}
+                  </div>
                 )}
               </div>
             ) : (
@@ -287,32 +547,32 @@ export function CreateOrderStepper({
                 <Input
                   placeholder="Customer Name *"
                   required
-                  value={newCustomer.name}
+                  value={orderDraft.customerName}
                   onChange={(e) =>
-                    setNewCustomer({ ...newCustomer, name: e.target.value })
+                    setOrderDraft({ ...orderDraft, customerName: e.target.value })
                   }
                 />
                 <Input
                   placeholder="Phone Number *"
                   required
-                  value={newCustomer.phone}
+                  value={orderDraft.customerPhone}
                   onChange={(e) =>
-                    setNewCustomer({ ...newCustomer, phone: e.target.value })
+                    setOrderDraft({ ...orderDraft, customerPhone: e.target.value })
                   }
                 />
                 <Input
                   type="email"
                   placeholder="Email (Optional)"
-                  value={newCustomer.email}
+                  value={orderDraft.customerEmail}
                   onChange={(e) =>
-                    setNewCustomer({ ...newCustomer, email: e.target.value })
+                    setOrderDraft({ ...orderDraft, customerEmail: e.target.value })
                   }
                 />
                 <Textarea
                   placeholder="Address (Optional)"
-                  value={newCustomer.address}
+                  value={orderDraft.customerAddress}
                   onChange={(e) =>
-                    setNewCustomer({ ...newCustomer, address: e.target.value })
+                    setOrderDraft({ ...orderDraft, customerAddress: e.target.value })
                   }
                   rows={2}
                 />
@@ -329,9 +589,16 @@ export function CreateOrderStepper({
               </label>
               <Input
                 type="datetime-local"
-                value={orderDetails.dueDate}
+                value={
+                  orderDraft.dueDate
+                    ? new Date(orderDraft.dueDate).toISOString().slice(0, 16)
+                    : ""
+                }
                 onChange={(e) =>
-                  setOrderDetails({ ...orderDetails, dueDate: e.target.value })
+                  setOrderDraft({
+                    ...orderDraft,
+                    dueDate: e.target.value ? new Date(e.target.value) : undefined,
+                  })
                 }
               />
             </div>
@@ -342,10 +609,10 @@ export function CreateOrderStepper({
               <Input
                 type="number"
                 placeholder="e.g., 5.5"
-                value={orderDetails.weight}
+                value={orderDraft.weight}
                 onChange={(e) =>
-                  setOrderDetails({
-                    ...orderDetails,
+                  setOrderDraft({
+                    ...orderDraft,
                     weight: Number(e.target.value),
                   })
                 }
@@ -357,9 +624,9 @@ export function CreateOrderStepper({
               </label>
               <Textarea
                 placeholder="e.g., Allergy: Use non-scented detergent"
-                value={orderDetails.notes}
+                value={orderDraft.notes}
                 onChange={(e) =>
-                  setOrderDetails({ ...orderDetails, notes: e.target.value })
+                  setOrderDraft({ ...orderDraft, notes: e.target.value })
                 }
               />
             </div>
@@ -387,34 +654,46 @@ export function CreateOrderStepper({
               </p>
               <p>
                 <span className="text-muted-foreground">Due: </span>
-                {orderDetails.dueDate
-                  ? new Date(orderDetails.dueDate).toLocaleString()
+                {orderDraft.dueDate
+                  ? new Date(orderDraft.dueDate).toLocaleString()
                   : "N/A"}
               </p>
               <p>
                 <span className="text-muted-foreground">Notes: </span>
-                {orderDetails.notes || "None"}
+                {orderDraft.notes || "None"}
               </p>
             </Card>
             <Card className="p-4">
               <span className="text-muted-foreground">Weight: </span>
-              {orderDetails.weight > 0 ? `${orderDetails.weight} kg` : "N/A"}
+              {(orderDraft?.weight ?? 0) > 0 ? `${orderDraft.weight} kg` : "N/A"}
             </Card>
             <div className="space-y-2">
               <h4 className="font-medium">
                 Items (
                 {calculatedItems.reduce((acc, item) => acc + item.quantity, 0)})
               </h4>
-              {calculatedItems.map((item, i) => (
-                <div key={i} className="p-2 border rounded-md">
-                  <p className="font-medium">
-                    {item.quantity}x {item.name}
+
+              {calculatedItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex justify-between p-2 border rounded-md"
+                >
+                  <div>
+                    <p className="font-medium">
+                      {item.quantity} × {item.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Notes: {item.notes ?? " "}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      KES {item.unitPrice.toLocaleString()} each
+                    </p>
+                  </div>
+                  <p className="font-semibold">
+                    KES {item.totalPrice.toLocaleString()}
                   </p>
                 </div>
               ))}
-            </div>
-            <div className="text-right font-bold text-lg">
-              Total: KES {calculatedTotal.toLocaleString()}
             </div>
           </div>
         );
@@ -422,47 +701,20 @@ export function CreateOrderStepper({
         return (
           <div className="space-y-4">
             <h3 className="font-semibold text-lg">Payment & Receipt</h3>
+
             <div className="text-center p-4 bg-secondary rounded-lg">
               <p className="text-muted-foreground">Total Amount</p>
               <p className="text-3xl font-bold">
                 KES {calculatedTotal.toLocaleString()}
               </p>
             </div>
+
             <div>
-              <label className="text-sm font-medium text-foreground block mb-2">
-                Payment Status
-              </label>
-              <Select
-                value={paymentDetails.paymentStatus}
-                onValueChange={(v) =>
-                  setPaymentDetails({
-                    ...paymentDetails,
-                    paymentStatus: v as Order["paymentStatus"],
-                  })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pay-on-delivery">
-                    Pay on Delivery
-                  </SelectItem>
-                  <SelectItem value="completed">Paid Now</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-2">
-                Payment Method
-              </label>
+              <label className="text-sm font-medium block mb-2">Payment Method</label>
               <Select
                 value={paymentDetails.paymentMethod}
-                onValueChange={(v: Order["paymentMethod"]) =>
-                  setPaymentDetails({
-                    ...paymentDetails,
-                    paymentMethod: v as Order["paymentMethod"],
-                  })
+                onValueChange={(v) =>
+                  setPaymentDetails({ ...paymentDetails, paymentMethod: v as Order["paymentMethod"] })
                 }
               >
                 <SelectTrigger>
@@ -471,57 +723,82 @@ export function CreateOrderStepper({
                 <SelectContent>
                   <SelectItem value="cash">Cash</SelectItem>
                   <SelectItem value="mpesa">M-Pesa</SelectItem>
-                  <SelectItem value="airtel-money">Airtel Money</SelectItem>
-                  <SelectItem value="pesapal">Pesa Pal</SelectItem>
-                  <SelectItem value="visa">VISA</SelectItem>
-                  <SelectItem value="pdq">PDQ</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            {paymentDetails.paymentStatus === "completed" && (
-              <div className="space-y-4 p-4 border rounded-lg">
-                {(paymentDetails.paymentMethod === "mpesa" ||
-                  paymentDetails.paymentMethod === "airtel-money") && (
-                    <div className="space-y-3 pt-2">
-                      <Button className="w-full">
-                        <Send className="w-4 h-4 mr-2" />
-                        Send STK Push
-                      </Button>
-                      <div>
-                        <label className="text-sm font-medium text-foreground block mb-2">
-                          Transaction ID (Optional)
-                        </label>
-                        <Input
-                          placeholder="e.g., RKI456ABC789"
-                          value={paymentDetails.transactionId}
-                          onChange={(e) =>
-                            setPaymentDetails({
-                              ...paymentDetails,
-                              transactionId: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-                    </div>
-                  )}
-                {paymentDetails.paymentMethod !== "mpesa" && paymentDetails.paymentMethod !== "airtel-money" && (
-                  <div>
-                    <label className="text-sm font-medium text-foreground block mb-2">
-                      Transaction ID (Optional)
-                    </label>
-                    <Input
-                      placeholder="e.g., RKI456ABC789"
-                      value={paymentDetails.transactionId}
-                      onChange={(e) =>
-                        setPaymentDetails({
-                          ...paymentDetails,
-                          transactionId: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                )}
+
+            {paymentDetails.paymentMethod === "mpesa" && (
+              <div>
+                <label className="text-sm font-medium block mb-2">
+                  Customer Phone Number
+                </label>
+                <Input
+                  placeholder="2547XXXXXXXX"
+                  value={orderDraft.customerPhone}
+                  onChange={(e) =>
+                    setOrderDraft({ ...orderDraft, customerPhone: e.target.value })
+                  }
+                />
               </div>
+            )}
+
+            {paymentDetails.paymentMethod === "cash" && (
+              <div>
+                <label className="text-sm font-medium block mb-2">
+                  Cash Received By
+                </label>
+                <Input
+                  placeholder="Admin name"
+                  value={orderDraft.customerName}
+                  onChange={(e) =>
+                    setOrderDraft({
+                      ...orderDraft,
+                      customerName: e.target.value,
+                    })
+                  }
+                />
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {stkStatus === "failed" ? (
+                <Button
+                  variant="outline"
+                  className="w-full border-red-500 text-red-600"
+                  onClick={handleRetry}
+                >
+                  Retry M-Pesa Payment
+                </Button>
+              ) : (
+                <Button
+                  className="w-full"
+                  onClick={submitPayment}
+                  disabled={stkStatus === "sending" || stkStatus === "pending"}
+                >
+                  {stkStatus === "sending" ? "Processing..." :
+                    stkStatus === "pending" ? "Awaiting M-Pesa..." :
+                      paymentDetails.paymentMethod === "mpesa" ? "Send STK Push" : "Confirm Cash Payment"}
+                </Button>
+              )}
+
+              {stkStatus !== "idle" && (
+                <div className={`p-3 rounded-md text-sm text-center ${stkStatus === "success" ? "bg-green-100 text-green-800" : "bg-blue-50 text-blue-800"
+                  }`}>
+                  {stkStatus === "sending" && "Initializing secure connection..."}
+                  {stkStatus === "pending" && "Check your phone for the M-Pesa PIN prompt"}
+                  {stkStatus === "success" && "Transaction Verified! Order is now complete."}
+                  {stkStatus === "failed" && "Transaction unsuccessful. You can try again above."}
+                </div>
+              )}
+            </div>
+
+            {stkStatus !== "idle" && (
+              <p className="text-sm text-center text-muted-foreground">
+                {stkStatus === "sending" && "Sending STK push…"}
+                {stkStatus === "pending" && "Waiting for customer confirmation…"}
+                {stkStatus === "success" && "Payment received successfully"}
+                {stkStatus === "failed" && "Payment failed"}
+              </p>
             )}
           </div>
         );
@@ -611,93 +888,180 @@ export function CreateOrderStepper({
     }
   };
 
-  return (
-    <Card className="w-full h-full flex flex-col">
-      {/* Header */}
-      <div className="p-6 border-b flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-foreground">Create New Order</h2>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onClose}
-          disabled={isSubmitting}
-        >
-          <X className="w-5 h-5" />
-        </Button>
-      </div>
+  useEffect(() => {
+    if (!selectedCustomer) return;
 
-      <div className="flex flex-1 min-h-0">
-        {/* Stepper Navigation */}
-        <div className="w-1/4 border-r p-6">
-          <nav className="space-y-1">
-            {steps.map((step) => (
-              <button
-                key={step.id}
-                onClick={() => setCurrentStep(step.id)}
-                disabled={step.id > currentStep}
-                className={`w-full flex items-center gap-3 p-3 rounded-md text-left text-sm font-medium transition-colors ${currentStep === step.id
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-accent disabled:opacity-50"
-                  }`}
+    setOrderDraft((prev) => ({
+      ...prev,
+      customer: {
+        id: selectedCustomer.id,
+        name: selectedCustomer.name,
+        phone: selectedCustomer.phone,
+        email: selectedCustomer.email,
+        address: selectedCustomer.address,
+        is_new: false,
+      },
+    }));
+  }, [selectedCustomer]);
+
+  useEffect(() => {
+    if (customerMode !== "create") return;
+    if (!newCustomer.name || !newCustomer.phone) return;
+
+    setOrderDraft((prev) => ({
+      ...prev,
+      customer: {
+        ...newCustomer,
+        is_new: true,
+      },
+    }));
+  }, [newCustomer, customerMode]);
+
+  // useEffect(() => {
+  //   // setOrderDraft((prev) => ({
+  //   //   ...prev,
+  //   //   order_details: orderDraft,
+  //   // }));
+  // }, [orderDraft]);
+
+  useEffect(() => {
+    if (!Array.isArray(orderDraft.items)) return;
+
+    orderDraft.items.forEach((item) => {
+      handleGarmentQuantityChange(item.id, item.quantity);
+    });
+  }, []);
+
+  return (
+    <>
+      {/* <Dialog open={showDrafts} onOpenChange={setShowDrafts}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Saved Draft Orders</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            {drafts.length === 0 && (
+              <p className="text-sm text-muted-foreground">No saved drafts</p>
+            )}
+
+            {drafts.map((draft, index) => (
+              <div
+                key={index}
+                className="flex items-center justify-between border rounded p-2"
               >
-                <step.icon className="w-5 h-5" />
-                <span>{step.name}</span>
-              </button>
+                <div
+                  className="cursor-pointer"
+                  onClick={() => selectDraft(draft)}
+                >
+                  <p className="font-medium">
+                    {draft.customer?.name ?? "Unnamed Customer"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {draft.items?.length ?? 0} items
+                  </p>
+                </div>
+
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => deleteDraft(index)}
+                >
+                  Delete
+                </Button>
+              </div>
             ))}
-          </nav>
+          </div>
+        </DialogContent>
+      </Dialog> */}
+      <Card className="w-full h-full flex flex-col">
+
+        {/* Header */}
+        <div className="p-6 border-b flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-foreground">Create New Order</h2>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            disabled={isSubmitting}
+          >
+            <X className="w-5 h-5" />
+          </Button>
         </div>
 
-        {/* Form Content */}
-        <div className="w-3/4 flex flex-col">
-          <div className="flex-1 p-6 space-y-6 overflow-y-auto">
-            {renderStepContent()}
+        <div className="flex flex-1 min-h-0">
+          {/* Stepper Navigation */}
+          <div className="w-1/4 border-r p-6">
+            <nav className="space-y-1">
+              {steps.map((step) => (
+                <button
+                  key={step.id}
+                  onClick={() => setCurrentStep(step.id)}
+                  disabled={step.id > currentStep}
+                  className={`w-full flex items-center gap-3 p-3 rounded-md text-left text-sm font-medium transition-colors ${currentStep === step.id
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-accent disabled:opacity-50"
+                    }`}
+                >
+                  <step.icon className="w-5 h-5" />
+                  <span>{step.name}</span>
+                </button>
+              ))}
+            </nav>
           </div>
 
-          {/* Actions */}
-          <div className="p-6 border-t flex justify-between items-center">
-            <div className="flex gap-2">
-              {onSaveDraft && (
+          {/* Form Content */}
+          <div className="w-3/4 flex flex-col">
+            <div className="flex-1 p-6 space-y-6 overflow-y-auto">
+              {renderStepContent()}
+            </div>
+
+            {/* Actions */}
+            <div className="p-6 border-t flex justify-between items-center">
+              <div className="flex gap-2">
+                {onSaveDraft && (
+                  <Button
+                    variant="outline"
+                    onClick={updateDraft}
+                    disabled={isSubmitting}
+                  >
+                    Save Draft
+                  </Button>
+                )}
                 <Button
-                  variant="outline"
+                  type="button"
+                  variant="secondary"
                   onClick={onClose}
                   disabled={isSubmitting}
                 >
-                  Save Draft
+                  Cancel
                 </Button>
-              )}
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={onClose}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-            </div>
-            <div>
-              {currentStep > 1 && (
-                <Button
-                  variant="outline"
-                  onClick={handleBack}
-                  disabled={isSubmitting}
-                  className="mr-2"
-                >
-                  Back
-                </Button>
-              )}
-              {currentStep < steps.length ? (
-                <Button onClick={handleNext}>
-                  {currentStep === 3 ? "Confirm" : "Next"}
-                </Button>
-              ) : (
-                <Button onClick={handleSubmit} disabled={isSubmitting}>
-                  {isSubmitting ? "Creating Order..." : "Submit Order"}
-                </Button>
-              )}
+              </div>
+              <div>
+                {currentStep > 1 && (
+                  <Button
+                    variant="outline"
+                    onClick={handleBack}
+                    disabled={isSubmitting}
+                    className="mr-2"
+                  >
+                    Back
+                  </Button>
+                )}
+                {currentStep < steps.length ? (
+                  <Button onClick={handleNext}>
+                    {currentStep === 3 ? "Confirm" : "Next"}
+                  </Button>
+                ) : (
+                  <Button disabled={isSubmitting}>
+                    {isSubmitting ? "Creating Order..." : "Submit Order"}
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </Card>
+      </Card>
+    </>
   );
 }

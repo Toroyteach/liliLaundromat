@@ -53,13 +53,30 @@ export function ItemTracker({ item, order, customer }: ItemTrackerProps) {
           </h3>
           <div className="flex items-center gap-2">
             <Badge variant="outline">{item.barcode}</Badge>
-            <Badge className="bg-teal-100 text-teal-800">
-              {item.quantity} items
-            </Badge>
           </div>
         </div>
 
+        {/* Item Meta */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+          <Meta label="Color" value={item.color ?? "—"} />
+          <Meta label="Material" value={item.material ?? "—"} />
+          <Meta label="Weight (kg)" value={item.weightKg ?? "—"} />
+          <Meta label="Unit Price" value={`KES ${item.unitPrice}`} />
+          <Meta label="Total Price" value={`KES ${item.totalPrice}`} />
+          <Meta label="Status" value={item.status} />
+        </div>
+
+        {item.notes && (
+          <div className="text-sm bg-muted/40 p-3 rounded">
+            <p className="text-muted-foreground text-xs mb-1">Notes</p>
+            <p>{item.notes}</p>
+          </div>
+        )}
+
         {/* Timeline */}
+        <p className="text-xs font-semibold uppercase text-muted-foreground">
+          Handling History
+        </p>
         <div className="flex items-start">
           {trackingStages.map((stage, index) => {
             const isCompleted = index < currentStageIndex;
@@ -129,3 +146,10 @@ export function ItemTracker({ item, order, customer }: ItemTrackerProps) {
     </div>
   );
 }
+
+const Meta = ({ label, value }: { label: string; value: any }) => (
+  <div>
+    <p className="text-muted-foreground text-xs">{label}</p>
+    <p className="font-medium">{value}</p>
+  </div>
+);

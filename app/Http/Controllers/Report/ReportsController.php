@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Report;
 
 use App\Http\Controllers\Controller;
+use App\Models\Order;
 use App\Services\AuditLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -14,6 +15,62 @@ use Inertia\Response;
 
 class ReportsController extends Controller
 {
+    public function index(): Response|RedirectResponse
+    {
+        try {
+            $models = [
+                new Order(),
+            ];
+
+            $auditTrailData = collect($models)
+                ->flatMap(fn($model) => AuditLogService::generateLogs($model))
+                ->sortByDesc('created_at')
+                ->values()
+                ->map(fn($log) => [
+                    'id' => $log['id'],
+                    'user' => $log['user'],
+                    'action' => $log['action'],
+                    'timestamp' => $log['created_at']->toISOString(),
+                    'changes' => $log['changes'],
+                ]);
+
+            return Inertia::render('reports/page', [
+                'auditTrailData' => $auditTrailData,
+            ]);
+        } catch (\Throwable $e) {
+            return back()->with(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function bulkUpload(Request $request)
+    {
+        $data = $request->validate([
+            'type' => 'required|in:users,orders,customers',
+            'rows' => 'required|array|min:1',
+            'rows.*' => 'array',
+        ]);
+
+        DB::transaction(function () use ($data, $request) {
+            match ($data['type']) {
+                'orders' => $this->insertOrders($data['rows']),
+            };
+        });
+
+        return back()->with('success', 'Bulk upload completed');
+    }
+
+    private function insertOrders(array $rows)
+    {
+        foreach ($rows as $row) {
+            Order::create([
+                'order_id' => $row['OrderID'] ?? null,
+                'customer_name' => $row['CustomerName'] ?? 'n/a',
+                'amount' => $row['Amount'] ?? 0,
+                'status' => $row['Status'] ?? 'pending',
+            ]);
+        }
+    }
+
     /**
      * get general report for a model by date range
      */
@@ -37,7 +94,6 @@ class ReportsController extends Controller
                 'message' => 'Report loaded',
                 'data' => $records,
             ], 200);
-
         } catch (Throwable $e) {
             return back()->with(['status' => false, 'message' => $e->getMessage()], 500);
         }
@@ -73,7 +129,6 @@ class ReportsController extends Controller
                 'message' => "export ready",
                 'data' => $records,
             ]);
-
         } catch (Throwable $e) {
             return back()->with(['status' => false, 'message' => $e->getMessage()], 500);
         }
@@ -111,7 +166,6 @@ class ReportsController extends Controller
                 'message' => 'Audit logs loaded',
                 'data' => $logs
             ], 200);
-
         } catch (Throwable $e) {
             return back()->with(['status' => false, 'message' => $e->getMessage()], 500);
         }
@@ -134,7 +188,6 @@ class ReportsController extends Controller
                 'message' => "Preview generated",
                 'data' => $data,
             ]);
-
         } catch (Throwable $e) {
             return back()->with(['status' => false, 'message' => $e->getMessage()], 500);
         }
@@ -160,7 +213,6 @@ class ReportsController extends Controller
                 'status' => true,
                 'message' => "Bulk upload complete",
             ]);
-
         } catch (Throwable $e) {
             DB::rollBack();
             return back()->with(['status' => false, 'message' => $e->getMessage()], 500);

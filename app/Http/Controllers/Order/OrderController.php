@@ -8,6 +8,7 @@ use App\Http\Requests\StoreOrderRequest;
 use App\Http\Requests\UpdateOrderRequest;
 use App\Models\Customer;
 use App\Services\BarcodeService;
+use App\Services\MpesaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Http\RedirectResponse;
@@ -29,9 +30,9 @@ class OrderController extends Controller
     public function index(): Response|RedirectResponse
     {
         try {
-            if (!Gate::allows('viewAny', Order::class)) {
-                abort(403, __('Unauthorized Action'));
-            }
+            // if (!Gate::allows('viewAny', Order::class)) {
+            //     abort(403, __('Unauthorized Action'));
+            // }
 
             $orders = Order::with([
                 'customer',
@@ -39,7 +40,7 @@ class OrderController extends Controller
                 'payments',
                 'branch',
             ])
-                ->orderByDesc('created_at')
+                ->orderBy('created_at', 'asc')
                 ->get();
 
             // format to match frontend structure
@@ -89,11 +90,24 @@ class OrderController extends Controller
     public function create(): Response|RedirectResponse
     {
         try {
-            if (!Gate::allows('create', Order::class)) {
-                abort(403, __('Unauthorized Action'));
-            }
+            // if (!Gate::allows('create', Order::class)) {
+            //     abort(403, __('Unauthorized Action'));
+            // }
 
-            return Inertia::render('orders/create/page');
+            $customers = Customer::select('id', 'name', 'phone', 'email', 'address')
+                ->get()
+                ->map(fn($user) => [
+                    'id' => (string) $user->id,
+                    'name' => $user->name,
+                    'phone' => $user->phone,
+                    'email' => $user->email,
+                    'address' => $user->address,
+                ])
+                ->values();
+
+            return Inertia::render('orders/create/page', [
+                'customers' => $customers,
+            ]);
         } catch (\Throwable $e) {
             return back()->with(['error' => $e->getMessage()], 500);
         }
@@ -102,14 +116,13 @@ class OrderController extends Controller
     public function tracking(): Response|RedirectResponse
     {
         try {
-            if (!Gate::allows('viewAny', Order::class)) {
-                abort(403, __('Unauthorized Action'));
-            }
+            // if (!Gate::allows('viewAny', Order::class)) {
+            //     abort(403, __('Unauthorized Action'));
+            // }
 
             $orders = Order::with(['customer', 'branch', 'items', 'payments'])
                 ->orderByDesc('created_at')
                 ->get();
-
 
             // fetch logs for all orders/items in one query to avoid N+1
             $orderIds = $orders->pluck('id')->all();
@@ -208,19 +221,188 @@ class OrderController extends Controller
         }
     }
 
-    public function store(StoreOrderRequest $request): Response|RedirectResponse
+    public function store(StoreOrderRequest $request, MpesaService $mpesaService): Response|RedirectResponse
     {
         try {
-            if (!Gate::allows('create', Order::class)) {
-                abort(403, __('Unauthorized Action'));
+            $validated = $request->validated();
+
+            // dd($validated);
+
+            /** CUSTOMER (reuse or create) */
+            if (!empty($validated['customer_id'])) {
+                $customer = Customer::findOrFail($validated['customer_id']);
+            } else {
+                $customer = Customer::firstOrCreate(
+                    ['phone' => $validated['customer']['phone']],
+                    [
+                        'name'  => $validated['customer']['name'],
+                        'email' => $validated['customer']['email'] ?? null,
+                        'address' => $validated['customer']['address'] ?? null,
+                    ]
+                );
             }
 
-            $order = Order::create($request->validated());
 
-            return back()->with(['data' => $order], 201);
+            /** ORDER */
+            $order = Order::create([
+                'customer_id'  => $customer->id,
+                'user_id'      => $validated['user_id'],
+                'total_amount' => $validated['total_amount'],
+                'status'       => $validated['status'],
+                'due_date'     => $validated['due_date'],
+                'weight_kg'    => $validated['weight_kg'],
+            ]);
+
+            /** ORDER ITEMS */
+            foreach ($validated['items'] as $item) {
+                $order->items()->create([
+                    'garment_type'   => $item['garment_type'] ?? null,
+                    'quantity'       => $item['quantity'],
+                    'unit_price'     => $item['unit_price'],
+                    'total_price'    => $item['total_price'],
+                    'color'          => $item['color'] ?? null,
+                    'material'       => $item['material'] ?? null,
+                    'barcode_number' => $item['barcode'] ?? null,
+                    'status'         => $item['status'],
+                    'notes'          => $item['notes'] ?? null,
+                ]);
+            }
+
+            // 3. Handle M-Pesa Logic
+            if ($request->payment_method === 'mpesa') {
+                try {
+                    $mpesaService->stkPush($order, $request->customer_phone, $request->total_amount);
+                    return redirect()->back()->with('order_id', $order->id);
+                } catch (\Exception $e) {
+                    // We still flash the order_id so the UI knows which order to retry
+                    return redirect()->back()
+                        ->with('order_id', $order->id)
+                        ->with('error', 'M-Pesa service unavailable.');
+                }
+            }
+
+            $processedData = [
+                'id' => rand(1, 1000),
+                'original' => $validated['input_string'],
+                'timestamp' => now()->toDateTimeString(),
+                'status' => 'success'
+            ];
+
+
+            return back()->with('result', $processedData);
         } catch (\Throwable $e) {
             return back()->with(['error' => $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Endpoint for polling order status
+     */
+    public function checkStatus(Order $order)
+    {
+        return response()->json([
+            'status' => $order->status, // 'pending', 'completed', 'failed'
+            'payment_status' => $order->payments()->latest()->first()?->status ?? 'none'
+        ]);
+    }
+
+    /**
+     * Explicit retry for M-Pesa
+     */
+    public function retryPayment(Order $order, MpesaService $mpesaService)
+    {
+        try {
+            $mpesaService->stkPush($order, $order->customer_phone, $order->total_amount);
+            return response()->json(['message' => 'STK Push resent']);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to resend STK Push'], 500);
+        }
+    }
+
+    public function getDraft(): Response
+    {
+        // $sampleDraft = [
+        //     'id' => 'ORD-789',
+        //     'customerName' => 'John Doe',
+        //     'due_date' => now(),
+        //     'items' => [
+        //         [
+        //             'id' => 'ITEM-1',
+        //             'name' => 'Cotton Shirt',
+        //             'quantity' => 2,
+        //             'serviceType' => 'wash-dry-iron',
+        //             'status' => 'pending',
+        //             'pricingMode' => 'per_item',
+        //             'unitPrice' => 150,
+        //             'totalPrice' => 300,
+        //             'createdAt' => now(),
+        //         ],
+        //         [
+        //             'id' => 'ITEM-2',
+        //             'name' => 'Heavy Blanket',
+        //             'quantity' => 1,
+        //             'serviceType' => 'dry-cleaning',
+        //             'status' => 'pending',
+        //             'pricingMode' => 'by_weight',
+        //             'unitPrice' => 200,
+        //             'totalPrice' => 1100,
+        //             'createdAt' => now(),
+        //         ]
+        //     ],
+        //     'totalAmount' => 1400,
+        //     'weight' => 5.5,
+        //     'createdAt' => now(),
+        // ];
+
+        // session(['order_draft' => $sampleDraft]);
+
+        $draft = session('order_draft', []);
+        $count = count($draft['items'] ?? []);
+
+
+        return inertia()->render('orders/create/page', [
+            'draft' => $draft,
+            'message' => $count > 0 ? "Retrieved {$count} items from draft." : "No drafts found.",
+            'status' => $count > 0 ? 'success' : 'info'
+        ]);
+    }
+
+
+    /**
+     * Update order details or items
+     */
+    public function updateDraft(Request $request)
+    {
+        $draft = session('order_draft', []);
+
+        // Merge incoming data (order details or items array)
+        $newDraft = array_merge($draft, $request->input('order', []));
+
+        session(['order_draft' => $newDraft]);
+
+        return back();
+    }
+
+    /**
+     * Specifically delete an item from the draft items array
+     */
+    public function deleteDraftItem($itemId)
+    {
+        $draft = session('order_draft', []);
+
+        if (isset($draft['items'])) {
+            // Filter out the item with the matching ID
+            $draft['items'] = array_values(array_filter($draft['items'], function ($item) use ($itemId) {
+                return $item['id'] !== $itemId;
+            }));
+
+            // Recalculate total amount after deletion
+            $draft['totalAmount'] = collect($draft['items'])->sum('totalPrice');
+
+            session(['order_draft' => $draft]);
+        }
+
+        return back();
     }
 
     public function show(Order $order): Response|RedirectResponse
@@ -238,11 +420,27 @@ class OrderController extends Controller
     {
         try {
 
-            if (!Gate::allows('update', $order)) {
-                abort(403, __('Unauthorized Action'));
-            }
+            // if (!Gate::allows('update', $order)) {
+            //     abort(403, __('Unauthorized Action'));
+            // }
 
             $order->update($request->validated());
+
+            return back()->with(['data' => $order]);
+        } catch (\Throwable $e) {
+            return back()->with(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function updateStatus(Request $request, Order $order): Response|RedirectResponse
+    {
+        try {
+
+            // if (!Gate::allows('update', $order)) {
+            //     abort(403, __('Unauthorized Action'));
+            // }
+
+            $order->update(['status' => $request->status]);
 
             return back()->with(['data' => $order]);
         } catch (\Throwable $e) {
@@ -254,9 +452,9 @@ class OrderController extends Controller
     {
         try {
 
-            if (!Gate::allows('delete', $order)) {
-                abort(403, __('Unauthorized Action'));
-            }
+            // if (!Gate::allows('delete', $order)) {
+            //     abort(403, __('Unauthorized Action'));
+            // }
             $order->delete();
 
             return back()->with(['message' => 'Order deleted successfully']);

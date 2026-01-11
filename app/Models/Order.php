@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use App\Services\AuditLogService;
 use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Order extends Model
 {
@@ -17,6 +19,16 @@ class Order extends Model
         'total_amount' => 'decimal:2',
         'due_date' => 'datetime',
     ];
+
+    public function getActivitiesAttribute()
+    {
+        return AuditLogService::generateLogs($this);
+    }
+
+    public function logs(): MorphMany
+    {
+        return $this->morphMany(Audit::class, 'subject');
+    }
 
     // belongs to the customer who owns the order
     public function customer()

@@ -2,7 +2,6 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { X } from "lucide-react"
 import type { Staff } from "@/lib/types"
-
 interface StaffDetailsModalProps {
   staff: Staff
   isOpen: boolean

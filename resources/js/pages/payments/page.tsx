@@ -27,26 +27,32 @@ export default function PaymentsPage() {
         currentPage * itemsPerPage,
     );
 
+    const formatKES = (amount: number) =>
+        amount.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        });
+
     const totalPages = Math.ceil(transactions.length / itemsPerPage);
 
     const totalRevenue = transactions
         .filter((t) => t.status === "completed")
-        .reduce((sum, t) => sum + t.amount, 0);
+        .reduce((sum, t) => sum + Number(t.amount), 0);
 
     const pendingAmount = transactions
         .filter((t) => t.status === "pending")
-        .reduce((sum, t) => sum + t.amount, 0);
+        .reduce((sum, t) => sum + Number(t.amount), 0);
 
     const stats = [
         {
             label: "Total Revenue",
-            value: `KES ${totalRevenue.toLocaleString()}`,
+            value: `KES ${formatKES(totalRevenue)}`,
             icon: TrendingUp,
             color: "text-green-600",
         },
         {
             label: "Pending Payments",
-            value: `KES ${pendingAmount.toLocaleString()}`,
+            value: `KES ${formatKES(pendingAmount)}`,
             icon: CreditCard,
             color: "text-yellow-600",
         },
@@ -211,8 +217,14 @@ export default function PaymentsPage() {
                                                     </span>
                                                 </td>
                                                 <td className="py-3 px-4 text-muted-foreground">
-                                                    {transaction.date}{" "}
-                                                    {transaction.date}
+                                                    {new Date(transaction.date).toLocaleString(undefined, {
+                                                        year: "numeric",
+                                                        month: "short",
+                                                        day: "2-digit",
+                                                        hour: "2-digit",
+                                                        minute: "2-digit",
+                                                        second: "2-digit",
+                                                    })}
                                                 </td>
                                             </tr>
                                         ),

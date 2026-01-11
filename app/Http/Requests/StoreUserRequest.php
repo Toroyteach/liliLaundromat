@@ -23,11 +23,11 @@ class StoreUserRequest extends FormRequest
     {
         return [
             'name' => 'required|string',
+            'phone' => 'string',
             'email' => 'required|string|email|unique:users,email',
-            'password' => 'required|string|min:6',
+            'password' => 'required|confirmed|string|min:6',
             'status' => 'required|in:active,suspended',
             'role' => 'required|string',
-            'profile_photo_path' => 'nullable|string'
         ];
     }
 
@@ -42,7 +42,6 @@ class StoreUserRequest extends FormRequest
             'password.min' => 'Password must be at least 6 characters',
             'status.required' => 'User status is required',
             'status.in' => 'Status must be active or suspended',
-            'role.required' => 'User role is required'
         ];
     }
 }

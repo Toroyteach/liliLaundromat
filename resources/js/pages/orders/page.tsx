@@ -9,6 +9,7 @@ import type { Order, OrderStatus, Customer } from "@/lib/types";
 import { useAuth } from "@/lib/auth-context";
 import React from "react";
 import { AppLayout } from "@/layouts/AppLayout";
+import toast from "react-hot-toast";
 
 function OrdersPageContent() {
     const { url } = usePage();
@@ -39,37 +40,45 @@ function OrdersPageContent() {
     );
 
     const totalPages = Math.ceil(orders.length / itemsPerPage);
-
-    const handleCreateOrder = (newOrder: Order) => {
-        setOrders((prev) => [newOrder, ...prev]);
-        // Check if it's a new customer and add them to the list
-        const customerExists = customers.some(
-            (c) => c.id === newOrder.customerId,
-        );
-        if (!customerExists) {
-            setCustomers((prev) => [
-                ...prev,
-                {
-                    id: newOrder.customerId,
-                    name: newOrder.customerName,
-                    phone: newOrder.customerPhone,
-                    email: (newOrder as any).customerEmail || "",
-                    createdAt: new Date(),
-                    totalOrders: 1,
-                    totalSpent: newOrder.totalPrice,
-                    // Add other required properties for Customer if they exist in your type definition
-                    // For example, if 'address' is required: address: newOrder.customerAddress || '',
-                },
-            ]);
-        }
-        setCreateModalOpen(false);
-    };
+    //     setOrders((prev) => [newOrder, ...prev]);
+    //     // Check if it's a new customer and add them to the list
+    //     const customerExists = customers.some(
+    //         (c) => c.id === newOrder.customerId,
+    //     );
+    //     if (!customerExists) {
+    //         setCustomers((prev) => [
+    //             ...prev,
+    //             {
+    //                 id: newOrder.customerId,
+    //                 name: newOrder.customerName,
+    //                 phone: newOrder.customerPhone,
+    //                 email: (newOrder as any).customerEmail || "",
+    //                 createdAt: new Date(),
+    //                 totalOrders: 1,
+    //                 totalSpent: newOrder.totalPrice,
+    //                 // Add other required properties for Customer if they exist in your type definition
+    //                 // For example, if 'address' is required: address: newOrder.customerAddress || '',
+    //             },
+    //         ]);
+    //     }
+    //     setCreateModalOpen(false);
+    // };
 
     const handleUpdateStatus = (orderId: string, newStatus: OrderStatus) => {
-        setOrders(
-            orders.map((o) =>
-                o.id === orderId ? { ...o, status: newStatus } : o,
-            ),
+        const toastId = toast.loading("Updating Status...");
+
+        router.post(
+            `/orders/${orderId}/status`,
+            { status: newStatus },
+            {
+                preserveScroll: true,
+                onSuccess: (page) => {
+
+                    toast.success("Successfully updated Status...", { id: toastId })
+
+                    setOrders(page.props.orders as Order[]);
+                },
+            },
         );
     };
 

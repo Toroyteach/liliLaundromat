@@ -22,12 +22,33 @@ class StoreOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'customer_id'  => ['required', 'integer', 'exists:customers,id'],
+            'customer_id'  => ['nullable', 'integer', 'exists:customers,id'],
             'user_id'      => ['required', 'integer', 'exists:users,id'],
-            'branch_id'    => ['required', 'integer', 'exists:branches,id'],
+            'branch_id'    => ['nullable', 'integer', 'exists:branches,id'],
             'total_amount' => ['required', 'numeric', 'min:0'],
-            'status'       => ['required', 'string', 'max:255'],
+            'customer_phone' => ['required', 'string', 'min:0'],
+            'customer_name' => ['required', 'string', 'min:0'],
+            'customer_address' => ['required', 'string', 'min:0'],
+            'customer_email' => ['required', 'email', 'min:0'],
+            'status'       => ['required', 'string'],
             'due_date'     => ['nullable', 'date'],
+            'weight_kg' => ['nullable', 'numeric', 'min:0'],
+
+            'payment_method' => ['required', 'string', 'in:cash,mpesa,airtel-money,card'],
+            'payment_status' => ['required', 'string', 'in:pending,completed,failed,pay-on-delivery'],
+            'transaction_id' => ['nullable', 'string', 'max:255'],
+
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.name' => ['required', 'string'],
+            'items.*.quantity' => ['required', 'integer', 'min:1'],
+            'items.*.service_type' => ['required', 'string'],
+            'items.*.unit_price' => ['required', 'numeric', 'min:0'],
+            'items.*.total_price' => ['required', 'numeric', 'min:0'],
+            'items.*.status' => ['required', 'string'],
+            'items.*.garment_type' => ['nullable', 'string'],
+            'items.*.material' => ['nullable', 'string'],
+            'items.*.color' => ['nullable', 'string'],
+            'items.*.notes' => ['nullable', 'string'],
         ];
     }
 

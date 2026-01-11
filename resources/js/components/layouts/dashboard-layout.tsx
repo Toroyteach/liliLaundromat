@@ -68,6 +68,18 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       { href: "/settings", label: "Settings", icon: Settings, permission: "settings.read" },
     ];
 
+    // const allNavItems: NavItem[] = [
+    //   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    //   { href: "/tracking", label: "Track Laundry", icon: MapPin },
+    //   { href: "/orders", label: "Orders", icon: ShoppingCart  },
+    //   { href: "/payments", label: "Payments", icon: CreditCard  },
+    //   { href: "/reports", label: "Reports", icon: BarChart3 },
+    //   { href: "/customers", label: "Customers", icon: Users  },
+    //   { href: "/users", label: "Staff", icon: Users2  },
+    //   // { href: "/hardware", label: "Hardware", icon: Zap, permission: "settings.read" },
+    //   { href: "/settings", label: "Settings", icon: Settings },
+    // ];
+
     return allNavItems.filter((item) =>
       item.permission ? can(item.permission) : true
     );

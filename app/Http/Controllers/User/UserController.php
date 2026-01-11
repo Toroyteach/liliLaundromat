@@ -7,6 +7,8 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
+use App\Models\Role;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -49,36 +51,69 @@ class UserController extends Controller
 
         $avgHandled = $totalStaff > 0 ? $totalHandledLast30 / $totalStaff : 0;
 
-        return Inertia::render('/index', [
-            'total_staff' => $totalStaff,
-            'active_staff' => $activeStaff,
-            'top_performance_staff' => $topPerformers,
-            'average_orders_processed' => round($avgHandled, 2),
-            'success' => true,
-            'data' => User::all()
+        $staff = User::with('roles')
+            ->select('id', 'name', 'email', 'phone', 'is_active', 'created_at')
+            ->get()
+            ->map(fn($u) => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'email' => $u->email,
+                'phone' => $u->phone,
+                'role' => $u->roles->first()?->name ?? null, // get role names as array
+                'status' => $u->is_active ? 'active' : 'inactive',
+                'joinDate' => $u->created_at->toDateString(),
+            ]);
+
+        return Inertia::render('staff/page', [
+            'stats' => [
+                'total_staff' => $totalStaff,
+                'active_staff' => $activeStaff,
+                'average_orders_processed' => round($avgHandled, 2),
+                'top_performance_staff' => $topPerformers,
+            ],
+            'staff' => $staff,
         ]);
     }
 
-    public function store(StoreUserRequest $request)
+    public function store(Request $request)
     {
         try {
             if (!Gate::allows('create', User::class)) {
                 abort(403, __('Unauthorized Action'));
             }
 
-            $data = $request->validated();
-            $data['password'] = Hash::make($data['password']);
+            $data = $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|email|unique:users,email',
+                'phone' => 'required|string|max:20',
+                'role' => 'required|in:staff,cashier,admin',
+                'status' => 'required|in:active,inactive',
+                'password' => 'required|string|min:6', // password_confirmation expected
+            ]);
+
+            $data['is_active'] = $data['status'] === 'active';
+
+            if (!empty($data['password'])) {
+                $data['password'] = Hash::make($data['password']);
+            } else {
+                unset($data['password']);
+            }
 
             $user = User::create($data);
 
-            return response()->json([
+            $role = Role::where('name', $data['role'])->first();
+            if ($role) {
+                $user->roles()->sync([$role->id]); // detach old, attach new
+            }
+
+            return back()->with([
                 'success' => true,
                 'message' => 'User created successfully',
                 'data' => $user
             ], 201);
         } catch (\Exception $e) {
 
-            return response()->json([
+            return back()->with([
                 'success' => false,
                 'message' => 'Error creating user',
                 'error' => $e->getMessage()
@@ -86,7 +121,7 @@ class UserController extends Controller
         }
     }
 
-    public function update(UpdateUserRequest $request, $id)
+    public function update(Request $request, $id)
     {
         try {
             $user = User::findOrFail($id);
@@ -95,7 +130,16 @@ class UserController extends Controller
                 return back()->with('error', __('You do not have the right permissions'));
             }
 
-            $data = $request->validated();
+            $data = $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => "required|email|unique:users,email,$id",
+                'phone' => 'required|string|max:20',
+                'role' => 'required|in:staff,cashier,admin',
+                'status' => 'required|in:active,inactive',
+                'password' => 'nullable|string|min:6',
+            ]);
+
+            $data['is_active'] = $data['status'] === 'active';
 
             if (!empty($data['password'])) {
                 $data['password'] = Hash::make($data['password']);
@@ -105,13 +149,19 @@ class UserController extends Controller
 
             $user->update($data);
 
-            return response()->json([
+            // Sync role in roles table
+            $role = Role::where('name', $data['role'])->first();
+            if ($role) {
+                $user->roles()->sync([$role->id]); // detach old, attach new
+            }
+
+            return back()->with([
                 'success' => true,
                 'message' => 'User updated successfully',
                 'data' => $user
             ], 200);
         } catch (\Exception $e) {
-            return response()->json([
+            return back()->with([
                 'success' => false,
                 'message' => 'Error updating user',
                 'error' => $e->getMessage()
@@ -136,7 +186,7 @@ class UserController extends Controller
             ]);
         } catch (\Exception $e) {
 
-            return response()->json([
+            return back()->with([
                 'success' => false,
                 'message' => 'Error deleting user',
                 'error' => $e->getMessage()

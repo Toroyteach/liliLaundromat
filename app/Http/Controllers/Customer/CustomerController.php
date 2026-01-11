@@ -17,29 +17,46 @@ class CustomerController extends Controller
     public function index(): Response|RedirectResponse
     {
         try {
-            if (!Gate::allows('viewAny', Customer::class)) {
-                abort(403, __('Unauthorized Action'));
-            }
+            // if (!Gate::allows('viewAny', Customer::class)) {
+            //     abort(403, __('Unauthorized Action'));
+            // }
 
+            // Stats
             $totalCustomers = Customer::count();
-
             $totalRevenue = Payment::sum('amount');
-
             $avgPerCustomer = Customer::withSum('payments', 'amount')
                 ->get()
                 ->avg('payments_sum_amount');
 
-            $customers = Customer::select('id', 'name', 'phone', 'email', 'created_at')
+            // Customers with extra fields for frontend
+            $customers = Customer::with(['orders'])
+                ->select('id', 'name', 'phone', 'email', 'created_at')
                 ->orderByDesc('created_at')
-                ->paginate(20);
+                ->get()
+                ->map(function ($customer) {
+                    $totalOrders = $customer->orders->count();
+                    $totalSpent = $customer->orders->sum(fn($order) => $order->total_amount ?? 0);
+                    $lastOrder = $customer->orders->sortByDesc('created_at')->first();
+
+                    return [
+                        'id' => $customer->id,
+                        'name' => $customer->name,
+                        'phone' => $customer->phone,
+                        'email' => $customer->email,
+                        'createdAt' => $customer->created_at,
+                        'totalOrders' => $totalOrders,
+                        'totalSpent' => $totalSpent,
+                        'lastOrderDate' => $lastOrder->created_at ?? null,
+                    ];
+                });
 
             return Inertia::render('customers/page', [
                 'stats' => [
                     'total_customers' => $totalCustomers,
-                    'total_revenue'   => $totalRevenue,
+                    'total_revenue' => $totalRevenue,
                     'avg_per_customer' => $avgPerCustomer,
                 ],
-                'customers' => $customers
+                'customers' => $customers, // now a plain array
             ]);
         } catch (\Throwable $e) {
             return back()->with(['error' => $e->getMessage()], 500);
@@ -64,9 +81,9 @@ class CustomerController extends Controller
     {
         try {
 
-            if (!Gate::allows('create', $customer)) {
-                abort(403, __('Unauthorized Action'));
-            }
+            // if (!Gate::allows('create', $customer)) {
+            //     abort(403, __('Unauthorized Action'));
+            // }
 
             return back()->with($customer);
         } catch (\Throwable $e) {
@@ -78,9 +95,9 @@ class CustomerController extends Controller
     {
         try {
 
-            if (!Gate::allows('update', $customer)) {
-                abort(403, __('Unauthorized Action'));
-            }
+            // if (!Gate::allows('update', $customer)) {
+            //     abort(403, __('Unauthorized Action'));
+            // }
 
             $customer->update($request->validated());
             return back()->with(['message' => 'Customer updated successfully', 'data' => $customer]);

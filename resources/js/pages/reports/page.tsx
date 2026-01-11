@@ -24,6 +24,7 @@ import { formatDistanceToNow } from "date-fns";
 import { useState } from "react";
 import type { DateRange } from "react-day-picker";
 import { AppLayout } from "@/layouts/AppLayout"
+import { usePage } from "@inertiajs/react";
 
 function ReportGenerator({
   onGenerateReport,
@@ -72,43 +73,43 @@ function ReportGenerator({
 }
 
 // Mock data for Audit Trail
-const auditTrailData = [
-  {
-    id: 1,
-    user: "Alice Johnson",
-    action: "Created new order #ORD-004 for customer 'David Lee'.",
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-    icon: ShoppingCart,
-  },
-  {
-    id: 2,
-    user: "Admin",
-    action: "Updated business settings: Changed currency to KES.",
-    timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000), // 3 hours ago
-    icon: Settings,
-  },
-  {
-    id: 3,
-    user: "Bob Smith",
-    action: "Updated staff profile for Carol Davis, status set to 'active'.",
-    timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000), // 5 hours ago
-    icon: User,
-  },
-  {
-    id: 4,
-    user: "System",
-    action: "Generated daily revenue report automatically.",
-    timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000), // 8 hours ago
-    icon: FileText,
-  },
-  {
-    id: 5,
-    user: "Alice Johnson",
-    action: "Logged in successfully.",
-    timestamp: new Date(Date.now() - 9 * 60 * 60 * 1000), // 9 hours ago
-    icon: User,
-  },
-];
+// const auditTrailData = [
+//   {
+//     id: 1,
+//     user: "Alice Johnson",
+//     action: "Created new order #ORD-004 for customer 'David Lee'.",
+//     timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+//     icon: ShoppingCart,
+//   },
+//   {
+//     id: 2,
+//     user: "Admin",
+//     action: "Updated business settings: Changed currency to KES.",
+//     timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000), // 3 hours ago
+//     icon: Settings,
+//   },
+//   {
+//     id: 3,
+//     user: "Bob Smith",
+//     action: "Updated staff profile for Carol Davis, status set to 'active'.",
+//     timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000), // 5 hours ago
+//     icon: User,
+//   },
+//   {
+//     id: 4,
+//     user: "System",
+//     action: "Generated daily revenue report automatically.",
+//     timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000), // 8 hours ago
+//     icon: FileText,
+//   },
+//   {
+//     id: 5,
+//     user: "Alice Johnson",
+//     action: "Logged in successfully.",
+//     timestamp: new Date(Date.now() - 9 * 60 * 60 * 1000), // 9 hours ago
+//     icon: User,
+//   },
+// ];
 
 // Mock data for System Notifications
 const systemNotificationsData = [
@@ -135,7 +136,19 @@ const systemNotificationsData = [
   },
 ];
 
+type AuditLog = {
+  id: number;
+  user: string;
+  action: string;
+  timestamp: string;
+  changes: any[];
+};
+
 export default function ReportsPage() {
+
+  const page = usePage().props;
+  const auditTrailData: AuditLog[] = (page.auditTrailData as AuditLog[]) ?? [];
+
   const handleGenerateReport = (
     type: string,
     format: string,
@@ -180,7 +193,7 @@ export default function ReportsPage() {
               <ReportGenerator onGenerateReport={handleGenerateReport} />
               <BulkUploadCard />
 
-              <Card className="p-6">
+              {/* <Card className="p-6">
                 <h3 className="text-lg font-semibold text-foreground flex items-center mb-4">
                   <Bell className="w-5 h-5 mr-2" />
                   System Notifications
@@ -202,7 +215,7 @@ export default function ReportsPage() {
                     </div>
                   ))}
                 </div>
-              </Card>
+              </Card> */}
             </div>
 
             {/* Right Column: Audit Trail */}
@@ -213,27 +226,30 @@ export default function ReportsPage() {
                   Audit Trail / Activity Log
                 </h3>
                 <div className="space-y-4 max-h-[calc(100vh-20rem)] overflow-y-auto pr-2">
-                  {auditTrailData.map((log) => (
-                    <div key={log.id} className="flex items-start gap-3">
-                      <div className="bg-secondary p-2 rounded-full mt-1">
-                        <log.icon className="w-4 h-4 text-muted-foreground" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-foreground">
-                          <span className="font-semibold">{log.user}</span>{" "}
-                          {log.action.includes(log.user)
-                            ? ""
-                            : log.action.charAt(0).toLowerCase() +
-                            log.action.slice(1)}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(log.timestamp, {
-                            addSuffix: true,
-                          })}
-                        </p>
-                      </div>
+                  {auditTrailData.length === 0 ? (
+                    <div className="text-sm text-muted-foreground text-center py-8 border border-dashed rounded-md">
+                      No audit activity found.
                     </div>
-                  ))}
+                  ) : (
+                    auditTrailData.map((log) => (
+                      <div key={log.id} className="flex items-start gap-3">
+                        <div className="bg-secondary p-2 rounded-full mt-1" />
+                        <div>
+                          <p className="text-sm text-foreground">
+                            <span className="font-semibold">{log.user}</span>{" "}
+                            {log.action.includes(log.user)
+                              ? ""
+                              : log.action.charAt(0).toLowerCase() + log.action.slice(1)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatDistanceToNow(new Date(log.timestamp), {
+                              addSuffix: true,
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </Card>
             </div>

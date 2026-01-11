@@ -11,37 +11,22 @@ import { Button } from "@/components/ui/button";
 export interface Garment {
   id: string;
   name: string;
-  type:
-    | "shirt"
-    | "pants"
-    | "jacket"
-    | "underwear"
-    | "socks"
-    | "dress"
-    | "skirt"
-    | "coat"
-    | "sweater"
-    | "tie";
+  material?: string;
+  color?: string;
+  notes?: string;
+  type: | "shirt" | "pants" | "jacket" | "underwear" | "socks" | "dress" | "skirt" | "coat" | "sweater" | "tie";
   icon: React.ComponentType<{ className?: string }>;
   basePrice: number;
 }
 
 export interface GarmentListProps {
-  /**
-   * Array of garment items to display
-   */
   items?: Garment[];
-  /**
-   * Callback when quantity changes for an item
-   */
-  onQuantityChange?: (garmentId: string, quantity: number) => void;
-  /**
-   * Title for the component
-   */
+  onQuantityChange?: (
+    garmentId: string,
+    quantity: number,
+    meta?: GarmentMeta
+  ) => void;
   title?: string;
-  /**
-   * Subtitle/description
-   */
   subtitle?: string;
 }
 
@@ -255,6 +240,11 @@ export const DEFAULT_GARMENTS: Garment[] = [
   { id: "tie", name: "Ties", type: "tie", icon: TieIcon, basePrice: 1.25 },
 ];
 
+type GarmentMeta = {
+  material?: string;
+  color?: string;
+  notes: string;
+};
 /**
  * GarmentList Component
  * Displays a grid of garment items with quantity selectors
@@ -265,6 +255,9 @@ export function GarmentList({
   title = "Garments",
   subtitle = "Select and manage laundry items",
 }: GarmentListProps) {
+
+  const [details, setDetails] = useState<Record<string, GarmentMeta>>({});
+
   const [quantities, setQuantities] = useState<GarmentQuantity>(() => {
     const initial: GarmentQuantity = {};
     items.forEach((item) => {
@@ -275,11 +268,13 @@ export function GarmentList({
 
   const handleQuantityChange = (garmentId: string, newQuantity: number) => {
     const quantity = Math.max(0, newQuantity);
+
     setQuantities((prev) => ({
       ...prev,
       [garmentId]: quantity,
     }));
-    onQuantityChange?.(garmentId, quantity);
+
+    onQuantityChange?.(garmentId, quantity, details[garmentId]);
   };
 
   const handleIncrement = (garmentId: string) => {
@@ -291,6 +286,29 @@ export function GarmentList({
       garmentId,
       Math.max(0, (quantities[garmentId] || 0) - 1)
     );
+  };
+
+
+  const updateDetail = (
+    garmentId: string,
+    field: keyof GarmentMeta,
+    value: string
+  ) => {
+    setDetails((prev) => {
+      const next: GarmentMeta = {
+        material: prev[garmentId]?.material ?? "",
+        color: prev[garmentId]?.color ?? "",
+        notes: prev[garmentId]?.notes ?? "",
+        [field]: value,
+      };
+
+      const quantity = quantities[garmentId] ?? 0;
+      if (quantity > 0) {
+        onQuantityChange?.(garmentId, quantity, next);
+      }
+
+      return { ...prev, [garmentId]: next };
+    });
   };
 
   return (
@@ -354,6 +372,22 @@ export function GarmentList({
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
+
+              {currentQuantity > 0 && (
+                <div className="w-full space-y-2">
+
+                  {/* Extra Notes */}
+                  <textarea
+                    rows={2}
+                    className="w-full resize-none rounded-md border px-3 py-2 text-sm"
+                    placeholder="Extra notes (optional)"
+                    value={details[garment.id]?.notes ?? ""}
+                    onChange={(e) =>
+                      updateDetail(garment.id, "notes", e.target.value)
+                    }
+                  />
+                </div>
+              )}
 
               {/* Total Price for this item */}
               {currentQuantity > 0 && (

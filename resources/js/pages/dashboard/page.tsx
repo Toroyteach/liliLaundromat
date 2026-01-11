@@ -240,14 +240,14 @@ export default function DashboardPage() {
                     </div>
 
                     <Tabs defaultValue="overview" className="w-full">
-                        <TabsList className="grid w-full grid-cols-3">
+                        <TabsList className="grid w-full grid-cols-2">
                             <TabsTrigger value="overview">Overview</TabsTrigger>
                             <TabsTrigger value="analytics">
                                 Analytics
                             </TabsTrigger>
-                            <TabsTrigger value="operations">
+                            {/* <TabsTrigger value="operations">
                                 Operations
-                            </TabsTrigger>
+                            </TabsTrigger> */}
                         </TabsList>
 
                         {/* Overview Tab */}

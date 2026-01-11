@@ -9,7 +9,7 @@ import type { Staff } from "@/lib/types";
 interface StaffListProps {
   staff: Staff[];
   onEdit: (staff: Staff) => void;
-  onDelete: (staffId: string) => void;
+  onDelete: (staffId: number) => void;
 }
 
 export function StaffList({ staff, onEdit, onDelete }: StaffListProps) {

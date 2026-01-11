@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 import type { Staff } from "@/lib/types";
 import { StaffForm } from "@/components/staff/staff-form";
+import { router } from '@inertiajs/react';
+import { toast } from 'react-hot-toast';
 
 interface AddStaffModalProps {
   isOpen: boolean;
@@ -17,7 +19,6 @@ export function AddStaffModal({ isOpen, onClose, onAdd }: AddStaffModalProps) {
     email: "",
     phone: "",
     role: "staff",
-    avatar: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -26,29 +27,28 @@ export function AddStaffModal({ isOpen, onClose, onAdd }: AddStaffModalProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+
+    toast.loading("Adding staff...", { id: "staff-add" });
+
     try {
-      const newStaff: Staff = {
-        id: `STAFF-${Date.now()}`,
-        ...formData,
-        status: "active",
-        role: formData.role || "staff", // Ensure role is always defined
-        // Ensure required fields are not undefined
+      const payload: Omit<Staff, "id" | "joinDate"> = {
         name: formData.name || "",
         email: formData.email || "",
-        // Ensure phone is a string, default to empty if undefined
         phone: formData.phone || "",
-        joinDate: new Date(),
+        password: formData.password || "",
+        role: formData.role || "staff",
+        status: "active",
       };
-      onAdd(newStaff);
-      setFormData({
-        name: "",
-        email: "",
-        phone: "",
-        role: "staff",
-        avatar: "",
+
+      router.post("/users", payload, {
+        onSuccess: () => {
+          toast.success("Staff added successfully", { id: "staff-add" });
+          onClose()
+        },
+        onError: () => toast.error("Failed to add staff", { id: "staff-add" }),
       });
-    } finally {
-      setIsSubmitting(false);
+    } catch {
+      toast.error("Unexpected error", { id: "staff-add" });
     }
   };
 

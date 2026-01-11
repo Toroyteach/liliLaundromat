@@ -6,44 +6,47 @@ import { Users, TrendingUp, ShoppingCart, MoreVertical } from "lucide-react";
 import type { Customer } from "@/lib/types";
 import { AppLayout } from "@/layouts/AppLayout";
 import { Button } from "@/components/ui/button";
+import { usePage } from "@inertiajs/react";
 
 export default function CustomersPage() {
-    const [customers, setCustomers] = useState<Customer[]>([
-        {
-            id: "CUST-001",
-            name: "John Doe",
-            phone: "+254712345678",
-            email: "john@example.com",
-            totalOrders: 5,
-            totalSpent: 12500,
-            lastOrderDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-            createdAt: new Date("2024-01-10"),
-            notes: "VIP customer - prefers express service",
-        },
-        {
-            id: "CUST-002",
-            name: "Jane Smith",
-            phone: "+254798765432",
-            email: "jane@example.com",
-            totalOrders: 3,
-            totalSpent: 7500,
-            lastOrderDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-            createdAt: new Date("2024-02-15"),
-        },
-        {
-            id: "CUST-003",
-            name: "Mike Johnson",
-            phone: "+254723456789",
-            totalOrders: 8,
-            totalSpent: 24000,
-            lastOrderDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-            createdAt: new Date("2023-12-01"),
-            notes: "Regular customer - bulk orders",
-        },
-    ]);
+    const { props } = usePage();
+    const customers = (props.customers ?? []) as Customer[];
+    // const [customers, setCustomers] = useState<Customer[]>([
+    //     {
+    //         id: "CUST-001",
+    //         name: "John Doe",
+    //         phone: "+254712345678",
+    //         email: "john@example.com",
+    //         totalOrders: 5,
+    //         totalSpent: 12500,
+    //         lastOrderDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+    //         createdAt: new Date("2024-01-10"),
+    //         notes: "VIP customer - prefers express service",
+    //     },
+    //     {
+    //         id: "CUST-002",
+    //         name: "Jane Smith",
+    //         phone: "+254798765432",
+    //         email: "jane@example.com",
+    //         totalOrders: 3,
+    //         totalSpent: 7500,
+    //         lastOrderDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+    //         createdAt: new Date("2024-02-15"),
+    //     },
+    //     {
+    //         id: "CUST-003",
+    //         name: "Mike Johnson",
+    //         phone: "+254723456789",
+    //         totalOrders: 8,
+    //         totalSpent: 24000,
+    //         lastOrderDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+    //         createdAt: new Date("2023-12-01"),
+    //         notes: "Regular customer - bulk orders",
+    //     },
+    // ]);
 
     const handleDeleteCustomer = (customerId: string) => {
-        setCustomers(customers.filter((c) => c.id !== customerId));
+        // setCustomers(customers.filter((c) => c.id !== customerId));
     };
 
     const [currentPage, setCurrentPage] = useState(1);

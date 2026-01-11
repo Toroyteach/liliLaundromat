@@ -78,16 +78,6 @@ export function OrdersList({
                 >
                   <Eye className="w-4 h-4" />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedOrder(order);
-                    setIsDetailsOpen(true);
-                  }}
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
               </div>
             </div>
           </Card>

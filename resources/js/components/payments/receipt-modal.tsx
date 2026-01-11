@@ -41,6 +41,22 @@ export function ReceiptModal({ order, isOpen, onClose }: ReceiptModalProps) {
     }
   }
 
+  const handleSendPdfWhatsApp = () => {
+    //send the pdf ytot yhr user swhatsapp
+    // if (receiptRef.current) {
+    //   const element = receiptRef.current
+    //   const opt = {
+    //     margin: 10,
+    //     filename: `receipt-${order.id}.pdf`,
+    //     image: { type: "jpeg", quality: 0.98 },
+    //     html2canvas: { scale: 2 },
+    //     jsPDF: { orientation: "portrait", unit: "mm", format: "a4" },
+    //   }
+    //   // In a real app, you'd use html2pdf library
+    //   console.log("Download receipt as PDF:", opt.filename)
+    // }
+  }
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -150,6 +166,10 @@ export function ReceiptModal({ order, isOpen, onClose }: ReceiptModalProps) {
           <Button className="bg-primary hover:bg-primary/90" onClick={handleDownload}>
             <Download className="w-4 h-4 mr-2" />
             Download PDF
+          </Button>
+          <Button className="bg-primary hover:bg-primary/90" onClick={handleSendPdfWhatsApp}>
+            <Download className="w-4 h-4 mr-2" />
+            Send Copy to WhatsApp
           </Button>
         </div>
       </Card>

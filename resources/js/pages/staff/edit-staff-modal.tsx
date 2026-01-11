@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 import type { Staff } from "@/lib/types";
 import { StaffForm } from "@/components/staff/staff-form";
+import { router } from '@inertiajs/react';
+import { toast } from 'react-hot-toast';
 
 interface EditStaffModalProps {
   isOpen: boolean;
@@ -29,10 +31,29 @@ export function EditStaffModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+
+    toast.loading("Updating staff...", { id: "staff-update" });
+
     try {
-      onUpdate(formData as Staff);
-    } finally {
-      setIsSubmitting(false);
+      const payload: Partial<Staff> = {
+        name: formData.name || "",
+        email: formData.email || "",
+        password: formData.password || "",
+        phone: formData.phone || "",
+        role: formData.role || "staff",
+        status: formData.status || "active",
+      };
+
+      router.put(`/users/${formData.id}`, payload, {
+        onSuccess: () => {
+          toast.success("Staff updated successfully", { id: "staff-update" });
+          onClose()
+        },
+        onError: () =>
+          toast.error("Failed to update staff", { id: "staff-update" })
+      });
+    } catch {
+      toast.error("Unexpected error", { id: "staff-update" });
     }
   };
 

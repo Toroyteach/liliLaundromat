@@ -1,69 +1,91 @@
 import { useState } from "react";
+import { usePage } from '@inertiajs/react';
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { StaffList } from "@/components/staff/staff-list";
-import { AddStaffModal } from "@/components/staff/add-staff-modal";
+import { AddStaffModal } from "./add-staff-modal";
 import { EditStaffModal } from "./edit-staff-modal";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Plus, Users, Star, TrendingUp } from "lucide-react";
 import type { Staff } from "@/lib/types";
 import { AppLayout } from "@/layouts/AppLayout"
+import { toast } from 'react-hot-toast';
+
+interface PageProps {
+  [key: string]: unknown;
+  staff: Staff[];
+  stats: {
+    total_staff: number;
+    active_staff: number;
+    average_orders_processed: number;
+  };
+}
 
 export default function StaffPage() {
-  const [staff, setStaff] = useState<Staff[]>([
-    {
-      id: "STAFF-001",
-      name: "Alice Johnson",
-      email: "alice@laundromat.com",
-      phone: "+254712345678",
-      role: "manager",
-      status: "active",
-      joinDate: new Date("2024-01-15"),
-    },
-    {
-      id: "STAFF-002",
-      name: "Bob Smith",
-      email: "bob@laundromat.com",
-      phone: "+254798765432",
-      role: "staff",
-      status: "active",
-      joinDate: new Date("2024-02-20"),
-    },
-    {
-      id: "STAFF-003",
-      name: "Carol Davis",
-      email: "carol@laundromat.com",
-      phone: "+254723456789",
-      role: "staff",
-      status: "inactive",
-      joinDate: new Date("2024-03-10"),
-    },
-  ]);
+
+  const { staff, stats } = usePage<PageProps>().props;
+
+  //   {
+  //     id: "STAFF-001",
+  //     name: "Alice Johnson",
+  //     email: "alice@laundromat.com",
+  //     phone: "+254712345678",
+  //     role: "manager",
+  //     status: "active",
+  //     joinDate: new Date("2024-01-15"),
+  //   },
+  //   {
+  //     id: "STAFF-002",
+  //     name: "Bob Smith",
+  //     email: "bob@laundromat.com",
+  //     phone: "+254798765432",
+  //     role: "staff",
+  //     status: "active",
+  //     joinDate: new Date("2024-02-20"),
+  //   },
+  //   {
+  //     id: "STAFF-003",
+  //     name: "Carol Davis",
+  //     email: "carol@laundromat.com",
+  //     phone: "+254723456789",
+  //     role: "staff",
+  //     status: "inactive",
+  //     joinDate: new Date("2024-03-10"),
+  //   },
+  // ]);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [staffToDelete, setStaffToDelete] = useState<number | null>(null);
+
+  const confirmDelete = (id: number) => {
+    setStaffToDelete(id);
+    setDeleteDialogOpen(true);
+  };
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
 
   const handleAddStaff = (newStaff: Staff) => {
-    setStaff([...staff, newStaff]);
     setIsAddModalOpen(false);
   };
   const handleUpdateStaff = (updatedStaff: Staff) => {
-    setStaff(staff.map((s) => (s.id === updatedStaff.id ? updatedStaff : s)));
     setIsEditModalOpen(false);
     setEditingStaff(null);
   };
 
-  const handleDeleteStaff = (staffId: string) => {
-    setStaff(staff.filter((s) => s.id !== staffId));
+  const handleDeleteStaff = (staffId: number) => {
+    console.log(staffId);
+    toast.error('ERROR DELETING')
+    // setStaff(staff.filter((s) => s.id !== staffId));
   };
 
   const handleEditStaff = (staffMember: Staff) => {
-    setEditingStaff(staffMember);
+    setEditingStaff({ ...staffMember }); // keeps role + status
     setIsEditModalOpen(true);
   };
 
@@ -104,7 +126,7 @@ export default function StaffPage() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-3 gap-3">
             <Card className="p-6">
               <div className="flex items-start justify-between">
                 <div>
@@ -130,22 +152,11 @@ export default function StaffPage() {
             <Card className="p-6">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Top Performer</p>
-                  <p className="text-2xl font-bold text-foreground mt-2">
-                    Alice J.
-                  </p>
-                </div>
-                <Star className="w-8 h-8 text-yellow-500" />
-              </div>
-            </Card>
-            <Card className="p-6">
-              <div className="flex items-start justify-between">
-                <div>
                   <p className="text-sm text-muted-foreground">
                     Avg. Orders Processed
                   </p>
                   <p className="text-2xl font-bold text-foreground mt-2">
-                    14/day
+                    0/day
                   </p>
                 </div>
                 <TrendingUp className="w-8 h-8 text-purple-600" />

@@ -13,6 +13,7 @@ use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
@@ -26,21 +27,16 @@ class DatabaseSeeder extends Seeder
             'name'  => 'Admin User',
             'email' => 'admin@example.com',
             'password' => 'password',
-            'role'  => 'admin',
         ]);
 
-        $cashier = User::factory()->create([
+        $manager = User::factory()->create([
             'name'  => 'Cashier User',
-            'email' => 'cashier@example.com',
-            'role'  => 'cashier',
+            'email' => 'manager@example.com',
         ]);
 
-
-        // BRANCHES
-        $branch1 = Branch::factory()->create([
-            'name' => 'Main Branch',
-            'location' => 'Evergreen Square off Kiambu Road',
-            'phone' => '0116534908'
+        $staff = User::factory()->create([
+            'name'  => 'Cashier User',
+            'email' => 'staff@example.com',
         ]);
 
 
@@ -84,47 +80,6 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-
-        // ORDERS
-        $orders = Order::factory()->count(10)->create([
-            'user_id' => $admin->id,
-            'branch_id' => $branch1->id,
-        ]);
-
-        foreach ($orders as $order) {
-
-            // ORDER ITEMS (2 each)
-            OrderItem::factory()->count(2)->create([
-                'order_id' => $order->id,
-                'garment_type' => 'Shirt/Blouse',
-                'pricing_mode' => 'per_piece',
-                'quantity' => 2,
-                'unit_price' => 150,
-                'total_price' => 300,
-                'status' => 'pending'
-            ]);
-
-            // payment
-            Payment::factory()->create([
-                'order_id' => $order->id,
-                'customer_id' => $order->customer_id,
-                'processed_by_user_id' => $cashier->id,
-                'amount' => 300,
-                'method' => 'cash',
-                'status' => 'paid'
-            ]);
-
-            // invoice
-            Invoice::factory()->create([
-                'order_id' => $order->id,
-                'customer_id' => $order->customer->id,
-                'subtotal' => 300,
-                'total' => 300,
-                'sent_to_customer' => true
-            ]);
-        }
-
-
         // // SETTINGS
         Setting::create([
             'key' => 'company_name',
@@ -136,12 +91,16 @@ class DatabaseSeeder extends Seeder
             'value' => '0116534908'
         ]);
 
+        // ---------------------------------------------
+        // CONFIGURATION ROLES
+        // ---------------------------------------------
+
         // ROLES
         $adminRoleId   = DB::table('roles')->insertGetId(['name' => 'admin']);
-        $cashierRoleId = DB::table('roles')->insertGetId(['name' => 'cashier']);
+        $managerRoleId = DB::table('roles')->insertGetId(['name' => 'manager']);
         $staffRoleId   = DB::table('roles')->insertGetId(['name' => 'staff']);
 
-        // MODELS
+        // MODELS & ACTIONS
         $models = [
             'users',
             'branches',
@@ -151,24 +110,20 @@ class DatabaseSeeder extends Seeder
             'payments',
             'invoices',
             'settings',
-            'garmet_types',
         ];
+        $actions = ['create', 'read', 'update', 'delete', 'attach_permission', 'detach_permission'];
 
-        // PERMISSIONS
-        $permissions = ['create', 'read', 'update', 'delete', 'attach_permission', 'detach_permission'];
-
+        // CREATE PERMISSIONS
         $permissionIds = [];
-
         foreach ($models as $model) {
-            foreach ($permissions as $action) {
-                $id = DB::table('permissions')->insertGetId([
+            foreach ($actions as $action) {
+                $permissionIds[] = DB::table('permissions')->insertGetId([
                     'name' => "$model.$action"
                 ]);
-                $permissionIds[] = $id;
             }
         }
 
-        // assign ALL permissions to admin
+        // ADMIN → ALL permissions
         foreach ($permissionIds as $pid) {
             DB::table('role_permission')->insert([
                 'role_id' => $adminRoleId,
@@ -176,126 +131,174 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        // cashier → only for customers, orders, order_items, payments, invoices
-        $cashierModels = ['customers', 'orders', 'order_items', 'payments', 'invoices'];
-
-        foreach ($cashierModels as $model) {
+        // MANAGER → basic operational permissions (customers, orders, order_items, payments, invoices)
+        $managerModels = ['customers', 'orders', 'order_items', 'payments', 'invoices'];
+        foreach ($managerModels as $model) {
             foreach (['create', 'read', 'update'] as $action) {
-                $pid = DB::table('permissions')
-                    ->where('name', "$model.$action")
-                    ->value('id');
-
+                $pid = DB::table('permissions')->where('name', "$model.$action")->value('id');
                 DB::table('role_permission')->insert([
-                    'role_id' => $cashierRoleId,
+                    'role_id' => $managerRoleId,
                     'permission_id' => $pid
                 ]);
             }
         }
 
-        // staff → only order_items.read + order_items.update
-        foreach (['read', 'update'] as $action) {
-            $pid = DB::table('permissions')
-                ->where('name', "order_items.$action")
-                ->value('id');
-
+        // STAFF → only orders.read + order_items.read/update
+        $staffPermissions = [
+            'orders.read',
+            'orders.create',
+            'order_items.read',
+            'order_items.update'
+        ];
+        foreach ($staffPermissions as $perm) {
+            $pid = DB::table('permissions')->where('name', $perm)->value('id');
             DB::table('role_permission')->insert([
                 'role_id' => $staffRoleId,
                 'permission_id' => $pid
             ]);
         }
 
-        // attach users to roles
+        // ATTACH USERS TO ROLES
         DB::table('user_role')->insert([
             ['user_id' => $admin->id, 'role_id' => $adminRoleId],
-            ['user_id' => $cashier->id, 'role_id' => $cashierRoleId],
+            ['user_id' => $manager->id, 'role_id' => $managerRoleId],
+            ['user_id' => $staff->id, 'role_id' => $staffRoleId],
         ]);
 
 
-        // Seeded data to the database
         // ---------------------------------------------
-        // EXTRA CUSTOMERS FOR MORE REALISTIC DASHBOARD
+        // CUSTOMERS
         // ---------------------------------------------
         $customers = Customer::factory()->count(20)->create();
 
+        // ---------------------------------------------
+        // CONFIGURATION MAPS
+        // ---------------------------------------------
+        $garmentPrices = [
+            'shirt' => 150,
+            'pants' => 200,
+            'jacket' => 500,
+            'dress' => 450,
+            'suit' => 1200,
+            'socks' => 50,
+            'coat' => 800,
+            'sweater' => 300,
+            'other' => 250
+        ];
+
+        $materials = ['cotton', 'wool', 'synthetic', 'delicate'];
+
+        // Define logical status flows
+        $scenarios = [
+            ['order' => 'completed',   'item' => 'completed',     'pay' => 'completed'],
+            ['order' => 'ready',       'item' => 'ready',         'pay' => 'completed'],
+            ['order' => 'in-progress', 'item' => 'washing',       'pay' => 'completed'],
+            ['order' => 'pending',     'item' => 'pending',       'pay' => 'pending'],
+            ['order' => 'pending',     'item' => 'pending',       'pay' => 'failed'], // M-Pesa bounce case
+        ];
 
         // ---------------------------------------------
-        // EXTRA ORDERS WITH DIFFERENT STATUSES
+        // SEEDING LOGIC
         // ---------------------------------------------
-        $statuses = ['pending', 'in-progress', 'ready', 'completed'];
-
-        foreach (range(1, 25) as $i) {
-
+        foreach (range(1, 40) as $i) {
             $customer = $customers->random();
+            $scenario = collect($scenarios)->random();
 
+            // 1. Create Order
             $order = Order::factory()->create([
-                'user_id'   => $admin->id,
-                'branch_id' => $branch1->id,
+                'user_id'     => $admin->id,
                 'customer_id' => $customer->id,
-                'status'    => $statuses[array_rand($statuses)],
-                'created_at' => now()->subDays(rand(0, 7)),
+                'status'      => $scenario['order'],
+                'total_amount' => 0,
+                'created_at'  => now()->subDays(rand(1, 15)),
             ]);
 
-            // ORDER ITEMS
-            OrderItem::factory()->count(rand(1, 3))->create([
-                'order_id' => $order->id,
-                'garment_type' => 'Shirt/Blouse',
-                'pricing_mode' => 'per_piece',
-                'quantity' => rand(1, 5),
-                'unit_price' => 150,
-                'total_price' => 150 * rand(1, 5),
-                'status' => 'done'
+            $itemsTotal = 0;
+            $itemCount  = rand(2, 6);
+
+            // 2. Create Order Items (Status Sync)
+            for ($j = 0; $j < $itemCount; $j++) {
+                $garment     = array_rand($garmentPrices);
+                $unitPrice   = $garmentPrices[$garment];
+                $pricingMode = collect(['per_item', 'by_weight'])->random();
+                $qty         = rand(1, 4);
+                $weight      = ($pricingMode === 'by_weight') ? rand(1, 5) : null;
+
+                $totalPrice = ($pricingMode === 'by_weight')
+                    ? ($weight * $unitPrice)
+                    : ($qty * $unitPrice);
+
+                OrderItem::create([
+                    'order_id'     => $order->id,
+                    'garment_type' => $garment,
+                    'material'     => collect($materials)->random(),
+                    'pricing_mode' => $pricingMode,
+                    'quantity'     => $qty,
+                    'weight_kg'    => $weight,
+                    'unit_price'   => $unitPrice,
+                    'total_price'  => $totalPrice,
+                    'status'       => $scenario['item'], // Synchronized with scenario
+                ]);
+
+                $itemsTotal += $totalPrice;
+            }
+
+            // 3. Update Order Final Total
+            $order->update(['total_amount' => $itemsTotal]);
+
+            // 4. Payment Creation (Realistic methods & Status)
+            $method = collect(['cash', 'mpesa'])->random();
+
+            Payment::create([
+                'order_id'             => $order->id,
+                'customer_id'          => $customer->id,
+                'processed_by_user_id' => $staff->id,
+                'amount'               => $itemsTotal,
+                'method'               => $method,
+                'status'               => $scenario['pay'],
+                'mpesa_reference'      => ($method === 'mpesa') ? 'BK' . strtoupper(Str::random(8)) : null,
+                'paid_at'              => ($scenario['pay'] === 'completed') ? now() : null,
             ]);
 
-            // PAYMENTS (mixed methods)
-            Payment::factory()->create([
-                'order_id' => $order->id,
-                'customer_id' => $customer->id,
-                'processed_by_user_id' => $cashier->id,
-                'amount' => rand(300, 5000),
-                'method' => collect(['cash', 'mpesa', 'card', 'invoice'])->random(),
-                'status' => collect(['success', 'pending'])->random(),
-                'paid_at' => now()->subDays(rand(0, 7)),
-            ]);
-
-            // INVOICES (some pending)
+            // 5. Invoice Generation
             Invoice::factory()->create([
                 'order_id' => $order->id,
                 'customer_id' => $customer->id,
-                'subtotal' => rand(300, 5000),
-                'total' => rand(300, 5000),
+                'subtotal' => $itemsTotal,
+                'total' => $itemsTotal,
                 'sent_to_customer' => rand(0, 1),
             ]);
         }
 
 
-        // // ---------------------------------------------
-        // // LOST & DAMAGED ITEMS LOGS
-        // // ---------------------------------------------
-        // foreach (range(1, 5) as $i) {
-        //     DB::table('garmet_handling_logs')->insert([
-        //         'order_item_id' => Order::inRandomOrder()->first()->id,
-        //         'stage' => collect(['lost', 'damaged'])->random(),
-        //         'description' => 'Item issue reported during processing',
-        //         'handled_by_user_id' => $cashier->id,
-        //         'scanned_at' => now()->subDays(rand(0, 5)),
-        //         'created_at' => now(),
-        //         'updated_at' => now(),
-        //     ]);
-        // }
+        // ---------------------------------------------
+        // LOST & DAMAGED ITEMS LOGS
+        // ---------------------------------------------
+        foreach (range(1, 5) as $i) {
+            DB::table('garmet_handling_logs')->insert([
+                'order_item_id' => Order::inRandomOrder()->first()->id,
+                'stage' => collect(['lost', 'damaged'])->random(),
+                'description' => 'Item issue reported during processing',
+                'handled_by_user_id' => $staff->id,
+                'scanned_at' => now()->subDays(rand(0, 5)),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
 
 
-        // // ---------------------------------------------
-        // // RECENT PAYMENTS (CLEAR FOR DASHBOARD DISPLAY)
-        // // ---------------------------------------------
-        // foreach (range(1, 10) as $i) {
-        //     Payment::factory()->create([
-        //         'amount' => rand(500, 5000),
-        //         'method' => collect(['mpesa', 'cash', 'card'])->random(),
-        //         'status' => collect(['success', 'pending'])->random(),
-        //         'paid_at' => now()->subHours(rand(1, 48)),
-        //         'customer_id' => $customers->random()->id,
-        //         'processed_by_user_id' => $cashier->id,
-        //     ]);
-        // }
+        // ---------------------------------------------
+        // RECENT PAYMENTS (CLEAR FOR DASHBOARD DISPLAY)
+        // ---------------------------------------------
+        foreach (range(1, 10) as $i) {
+            Payment::factory()->create([
+                'amount' => rand(500, 5000),
+                'method' => collect(['mpesa', 'cash', 'card'])->random(),
+                'status' => collect(['success', 'pending'])->random(),
+                'paid_at' => now()->subHours(rand(1, 48)),
+                'customer_id' => $customers->random()->id,
+                'processed_by_user_id' => $staff->id,
+            ]);
+        }
     }
 }

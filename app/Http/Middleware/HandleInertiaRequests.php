@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -37,6 +38,20 @@ class HandleInertiaRequests extends Middleware
     {
         $user = $request->user();
 
+
+        // Fetch user permissions based on their roles directly
+        $permissions = [];
+        if ($user) {
+            $permissions = DB::table('permissions')
+                ->join('role_permission', 'permissions.id', '=', 'role_permission.permission_id')
+                ->join('user_role', 'role_permission.role_id', '=', 'user_role.role_id')
+                ->where('user_role.user_id', $user->id)
+                ->pluck('permissions.name')
+                ->unique()
+                ->values()
+                ->toArray();
+        }
+
         return array_merge(parent::share($request), [
             'app_name' => config('app.name'),
             'auth' => [
@@ -48,9 +63,14 @@ class HandleInertiaRequests extends Middleware
                     'role' => $user->role, // PRIMARY ROLE
                     'profile_photo_path' => $user->profile_photo_path,
                 ] : null,
-                'permissions' => $user ? $user->getAllPermissions() : [], // Method to fetch all permissions by role
+                'permissions' => $permissions,
                 'primaryRole' => $user ? $user->role : '',
             ],
-        ]); 
+            'flash' => [
+                'order_id' => $request->session()->get('order_id'),
+                'success'  => $request->session()->get('success'),
+                'error'    => $request->session()->get('error'),
+            ],
+        ]);
     }
 }

@@ -25,20 +25,6 @@ export function StaffForm({
     <form onSubmit={onSubmit} className="p-6 space-y-4">
       <div>
         <label className="text-sm font-medium text-foreground block mb-2">
-          Profile Image
-        </label>
-        <div className="flex items-center gap-4">
-          <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center">
-            {/* Placeholder for image preview */}
-          </div>
-          <Button type="button" variant="outline">
-            <Upload className="w-4 h-4 mr-2" />
-            Upload
-          </Button>
-        </div>
-      </div>
-      <div>
-        <label className="text-sm font-medium text-foreground block mb-2">
           Name *
         </label>
         <input
@@ -61,6 +47,18 @@ export function StaffForm({
           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
           className="w-full px-3 py-2 border border-border rounded-lg bg-input text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           placeholder="john@example.com"
+        />
+      </div>
+      <div>
+        <label className="text-sm font-medium text-foreground block mb-2">
+          Password *
+        </label>
+        <input
+          type="password"
+          value={formData.password || ""}
+          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+          className="w-full px-3 py-2 border border-border rounded-lg bg-input text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          placeholder="***********"
         />
       </div>
       <div>
@@ -92,7 +90,8 @@ export function StaffForm({
             className="w-full px-3 py-2 border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="staff">Staff</option>
-            <option value="manager">Manager</option>
+            <option value="cashier">Cashier</option>
+            <option value="admin">Admin</option>
           </select>
         </div>
         {isEditMode && (

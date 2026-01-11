@@ -21,6 +21,16 @@ export interface GarmentItem {
   washType?: "machine" | "hand" | "dry-clean"
   trackingHistory: TrackingEvent[]
   garmentType?: "shirt" | "pants" | "jacket" | "underwear" | "dress" | "skirt" | "suit" | "other" | "socks" | "coat" | "sweater"
+
+  orderId: string
+  pricingMode: 'per_item' | 'by_weight'
+  weightKg?: number
+  unitPrice: number
+  totalPrice: number
+  color?: string
+  barcodeNumber?: string
+  notes?: string
+  createdAt: Date
 }
 
 // Tracking event interface
@@ -34,10 +44,11 @@ export interface TrackingEvent {
 // Order
 export interface Order {
   id: string
-  barcode: string
-  customerId: string
+  barcode?: string
+  customerId?: string
   customerName: string
-  customerPhone: string
+  customerPhone?: string
+  customerEmail?: string
   customerAddress?: string
   items: GarmentItem[]
   status: OrderStatus
@@ -52,18 +63,22 @@ export interface Order {
   staffId?: string
   transactionId?: string
   trackingHistory: TrackingEvent[]
+
+  userId: string
+  branchId?: string
+  totalAmount: number
 }
 
 // Staff and Customer types for management features
 export interface Staff {
-  id: string
-  name: string
-  email: string
-  phone: string
-  role: "manager" | "staff"
-  status: "active" | "inactive"
-  joinDate: Date
-  avatar?: string
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+  role: 'staff' | 'cashier' | 'admin';
+  status: 'active' | 'inactive';
+  joinDate: Date;
 }
 
 export interface Customer {

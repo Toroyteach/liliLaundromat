@@ -15,7 +15,7 @@ return new class extends Migration
             $table->bigIncrements('id');
             $table->foreignId('order_id')->constrained()->cascadeOnDelete();
 
-            $table->string('garment_type'); // shirt / curtains / duvet etc
+            $table->string('garment_type')->nullable(); // shirt / curtains / duvet etc
 
             $table->string('pricing_mode')->default('per_piece'); // 'per_piece', 'per_kg'
 

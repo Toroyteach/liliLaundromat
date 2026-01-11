@@ -1,34 +1,39 @@
-import { router } from '@inertiajs/react'
+import { router, usePage } from '@inertiajs/react'
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { CreateOrderStepper } from "@/components/orders/create-order-stepper";
 import type { Order, Customer } from "@/lib/types";
 import { AppLayout } from '@/layouts/AppLayout';
 
+type PageProps = {
+  customers: Customer[];
+};
+
 export default function CreateOrderPage() {
 
+  const { customers } = usePage<PageProps>().props;
   // Mock data for customers (replace with actual data fetching)
-  const mockCustomers: Customer[] = [
-    {
-      id: "CUST-001",
-      name: "Alice Smith",
-      phone: "+254712345678",
-      email: "alice@example.com",
-      address: "123 Main St",
-      createdAt: new Date(),
-      totalOrders: 5,
-      totalSpent: 1200,
-    },
-    {
-      id: "CUST-002",
-      name: "Bob Johnson",
-      phone: "+254798765432",
-      email: "bob@example.com",
-      address: "456 Oak Ave",
-      createdAt: new Date(),
-      totalOrders: 3,
-      totalSpent: 800,
-    },
-  ];
+  // const customers: Customer[] = [
+  //   {
+  //     id: "1",
+  //     name: "Alice Smith",
+  //     phone: "+254712345678",
+  //     email: "alice@example.com",
+  //     address: "123 Main St",
+  //     createdAt: new Date(),
+  //     totalOrders: 5,
+  //     totalSpent: 1200,
+  //   },
+  //   {
+  //     id: "2",
+  //     name: "Bob Johnson",
+  //     phone: "+254798765432",
+  //     email: "bob@example.com",
+  //     address: "456 Oak Ave",
+  //     createdAt: new Date(),
+  //     totalOrders: 3,
+  //     totalSpent: 800,
+  //   },
+  // ];
 
   const handleCreateOrder = (newOrder: Order) => {
     console.log("Order created:", newOrder);
@@ -56,7 +61,7 @@ export default function CreateOrderPage() {
             onClose={handleClose}
             onCreate={handleCreateOrder}
             onSaveDraft={handleSaveDraft}
-            customers={mockCustomers}
+            customers={customers}
             isOpen={true}
           />
         </div>

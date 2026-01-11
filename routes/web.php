@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\SignInController;
 use App\Http\Controllers\Dashboard\DashboardController;
+use App\Http\Controllers\Report\ReportsController;
 use App\Http\Controllers\Role\RolePermissionController;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -98,11 +99,20 @@ Route::middleware(['auth'])->group(function () {
     });
 
     Route::prefix('orders')->group(function () {
-        Route::get('/', [OrderController::class, 'index']);
+        Route::get('/', [OrderController::class, 'index'])->name('orders.index');
         Route::get('/create', [OrderController::class, 'create']);
         Route::post('/', [OrderController::class, 'store']);
+
+        // Polling route: Returns JSON for order/payment status
+        Route::get('/{order}/status', [OrderController::class, 'checkStatus'])->name('orders.status');
+        Route::post('/{order}/retry-payment', [OrderController::class, 'retryPayment'])->name('orders.retry-payment');
+
+        Route::get('/draft', [OrderController::class, 'getDraft']);
+        Route::post('/draft/update', [OrderController::class, 'updateDraft']);
+        Route::delete('/draft/{key}', [OrderController::class, 'deleteDraftItem']);
         Route::get('/{order}', [OrderController::class, 'show']);
         Route::put('/{order}', [OrderController::class, 'update']);
+        Route::post('/{order}/status', [OrderController::class, 'updateStatus']);
         Route::delete('/{order}', [OrderController::class, 'destroy']);
         Route::post('/{order}/generate-labels', [OrderController::class, 'generateLabels']);
     });
@@ -134,5 +144,11 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/', [UserController::class, 'store']);
         Route::put('/{id}', [UserController::class, 'update']);
         Route::delete('/{id}', [UserController::class, 'destroy']);
+    });
+
+    Route::prefix('reports')->group(function () {
+        Route::get('/', [ReportsController::class, 'index']);
+
+        Route::post('/bulk-upload', [ReportsController::class, 'bulkUpload'])->name('reports.bulk-upload');
     });
 });

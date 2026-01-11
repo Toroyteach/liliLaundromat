@@ -15,7 +15,7 @@ return new class extends Migration
             $table->bigIncrements('id');
             $table->foreignId('customer_id')->constrained()->cascadeOnDelete();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('branch_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('branch_id')->nullable()->constrained()->cascadeOnDelete();
             $table->decimal('total_amount', 10, 2)->default(0);
             $table->string('status')->index();
             $table->timestamp('due_date')->nullable();
